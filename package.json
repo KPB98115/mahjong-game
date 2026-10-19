@@ -1,0 +1,36 @@
+{
+  "devDependencies": {
+    "void": "^1.1.11",
+    "vite": "npm:@voidzero-dev/vite-plus-core@^1.2.0",
+    "typescript": "^7.0.2",
+    "vite-plus": "^1.2.0",
+    "@void/vue": "1.1.11"
+  },
+  "name": "mahjong-game",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vp dev",
+    "build": "vp build",
+    "preview": "vp preview",
+    "compose:up": "docker compose up -d --build",
+    "compose:down": "docker compose down",
+    "compose:logs": "docker compose logs -f web",
+    "compose:logs:socket": "docker compose logs -f socket-server",
+    "socket:dev": "npm run dev --prefix socket-server",
+    "db:up": "docker compose up -d postgres redis",
+    "db:down": "docker compose stop postgres redis",
+    "db:migrate": "void db migrate",
+    "db:status": "void db status",
+    "db:generate": "void db generate",
+    "db:reset": "void db reset --yes",
+    "db:seed": "void db seed --yes"
+  },
+  "dependencies": {
+    "hono": "^4.11.9",
+    "vue": "^3.5.30"
+  },
+  "overrides": {
+    "vite": "$vite"
+  }
+}
