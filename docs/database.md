@@ -1,6 +1,6 @@
 # Database schema
 
-Planning document. Table definitions are not implemented in `db/schema.ts` yet.
+Table definitions are implemented in `db/schema.ts` (split under `db/schema/`). Closed enum columns use the TypeScript enums in `src/types/server` and store snake_case text.
 
 HTTP API planning: [`docs/api.md`](api.md). Auth logic: [`docs/auth.md`](auth.md). Game repos/logic: [`docs/game.md`](game.md). Enums: [`docs/types.md`](types.md).
 
