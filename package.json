@@ -1,11 +1,4 @@
 {
-  "devDependencies": {
-    "void": "^1.1.11",
-    "vite": "npm:@voidzero-dev/vite-plus-core@^1.2.0",
-    "typescript": "^7.0.2",
-    "vite-plus": "^1.2.0",
-    "@void/vue": "1.1.11"
-  },
   "name": "mahjong-game",
   "private": true,
   "type": "module",
@@ -24,11 +17,28 @@
     "db:status": "void db status",
     "db:generate": "void db generate",
     "db:reset": "void db reset --yes",
-    "db:seed": "void db seed --yes"
+    "db:seed": "void db seed --yes",
+    "lint": "vp lint",
+    "fmt": "vp fmt",
+    "fmt:check": "vp fmt --check",
+    "typecheck": "tsc --noEmit",
+    "typecheck:socket": "tsc --noEmit --project socket-server/tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run lint && npm run fmt:check && npm test"
   },
   "dependencies": {
     "hono": "^4.11.9",
-    "vue": "^3.5.30"
+    "vue": "^3.5.30",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@void/vue": "1.1.11",
+    "typescript": "^7.0.2",
+    "vite": "npm:@voidzero-dev/vite-plus-core@^1.2.0",
+    "vite-plus": "^1.2.0",
+    "vitest": "^5.0.5",
+    "void": "^1.1.11"
   },
   "overrides": {
     "vite": "$vite"

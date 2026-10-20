@@ -56,7 +56,9 @@ export const games = gameSchema.table(
     minScoreUnits: numeric("min_score_units").notNull().default("0"),
     discardWinPayer: discardWinPayer("discard_win_payer").notNull(),
     autoDraw: boolean("auto_draw").notNull().default(true),
-    claimWindowMs: integer("claim_window_ms").$type<ClaimWindowMs>().default(ClaimWindowMs.FiveSeconds),
+    claimWindowMs: integer("claim_window_ms")
+      .$type<ClaimWindowMs>()
+      .default(ClaimWindowMs.FiveSeconds),
     scoringVersion: text("scoring_version").notNull(),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     createdAt: timestamptz("created_at"),
