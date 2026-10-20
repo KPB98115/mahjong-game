@@ -1,0 +1,4 @@
+# Generated Drizzle snapshots; formatting churns them on every migrate.
+db/migrations
+package-lock.json
+**/*.md
