@@ -1,6 +1,6 @@
 # Server enums (planning)
 
-Not implemented. Closed value sets are TypeScript **`enum`s** under **`src/types/server`**. Client HTTP and socket payloads are **whitelisted** against these enums at the boundary. Zod **schemas** live in `src/model/server` ([`docs/client.md`](client.md)); `*Logic` / socket handlers / `ApiClient` **call** parse. Membership is not re-decided in `*Logic` after a successful parse.
+Closed value sets are TypeScript **`enum`s** under **`src/types/server`**. The enums stored on `game.*` columns are implemented. API, auth, profile, Redis, and socket enums below are still planning. Client HTTP and socket payloads are **whitelisted** against these enums at the boundary. Zod **schemas** live in `src/model/server` ([`docs/client.md`](client.md)); `*Logic` / socket handlers / `ApiClient` **call** parse. Membership is not re-decided in `*Logic` after a successful parse.
 
 Enum **values** are the JSON/API values (**camelCase**). PostgreSQL **stores** snake_case text (`hong_kong`, `in_progress`). **Drizzle** maps enum ↔ SQL text and camelCase fields ↔ snake_case columns **when it builds the query**. `*Logic` and `*Repo` only see camelCase + TypeScript enums. Repos do not map by hand.
 
@@ -8,27 +8,29 @@ Enum **values** are the JSON/API values (**camelCase**). PostgreSQL **stores** s
 
 ---
 
-## Files (not written)
+## Files
 
-| Path | Enums |
-| --- | --- |
-| `src/types/server/api.ts` | `ApiStatus`, `ApiError`, `HttpStatus` |
-| `src/types/server/auth.ts` | `CookieName` |
-| `src/types/server/profile.ts` | `UserAttributeName`, `UserFigureName`, `UserFigureJsonKey` |
-| `src/types/server/redis.ts` | `RedisKeyPrefix` |
-| `src/types/server/ruleset.ts` | `Ruleset` |
-| `src/types/server/scoreUnit.ts` | `ScoreUnit` |
-| `src/types/server/discardWinPayer.ts` | `DiscardWinPayer` |
-| `src/types/server/claimWindowMs.ts` | `ClaimWindowMs` |
-| `src/types/server/gameStatus.ts` | `GameStatus` |
-| `src/types/server/prevailingWind.ts` | `PrevailingWind` |
-| `src/types/server/roundStatus.ts` | `RoundStatus` |
-| `src/types/server/roundPhase.ts` | `RoundPhase` |
-| `src/types/server/roundResultType.ts` | `RoundResultType` |
-| `src/types/server/winKind.ts` | `WinKind` |
-| `src/types/server/meldType.ts` | `MeldType` |
-| `src/types/server/socketEvent.ts` | `SocketEvent` |
-| `src/types/server/socketError.ts` | `SocketError` |
+Column enums used by `db/schema.ts` are written. The other files are not.
+
+| Path | Enums | Status |
+| --- | --- | --- |
+| `src/types/server/api.ts` | `ApiStatus`, `ApiError`, `HttpStatus` | not written |
+| `src/types/server/auth.ts` | `CookieName` | not written |
+| `src/types/server/profile.ts` | `UserAttributeName`, `UserFigureName`, `UserFigureJsonKey` | not written |
+| `src/types/server/redis.ts` | `RedisKeyPrefix` | not written |
+| `src/types/server/ruleset.ts` | `Ruleset` | written |
+| `src/types/server/scoreUnit.ts` | `ScoreUnit` | written |
+| `src/types/server/discardWinPayer.ts` | `DiscardWinPayer` | written |
+| `src/types/server/claimWindowMs.ts` | `ClaimWindowMs` | written |
+| `src/types/server/gameStatus.ts` | `GameStatus` | written |
+| `src/types/server/prevailingWind.ts` | `PrevailingWind` | written |
+| `src/types/server/roundStatus.ts` | `RoundStatus` | written |
+| `src/types/server/roundPhase.ts` | `RoundPhase` | written |
+| `src/types/server/roundResultType.ts` | `RoundResultType` | written |
+| `src/types/server/winKind.ts` | `WinKind` | written |
+| `src/types/server/meldType.ts` | `MeldType` | written |
+| `src/types/server/socketEvent.ts` | `SocketEvent` | not written |
+| `src/types/server/socketError.ts` | `SocketError` | not written |
 
 ---
 

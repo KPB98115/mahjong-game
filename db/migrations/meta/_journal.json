@@ -8,6 +8,13 @@
       "when": 1792301564480,
       "tag": "20261018053244_faithful_madame_web",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792412740812,
+      "tag": "20261019122540_little_shriek",
+      "breakpoints": true
     }
   ]
 }
