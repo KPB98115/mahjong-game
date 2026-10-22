@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isResolveSessionErr, isSocketTicketErr } from "../logic/server/auth/authLogic";
+import { isResolveSessionErr, isSocketTicketErr } from "../types/server/auth";
 import { ApiError, HttpStatus } from "../types/server/api";
 import {
   createAuthLogicForTest,

@@ -6,7 +6,7 @@ async function main(): Promise<void> {
   await startSocketServer(config);
 }
 
-main().catch((error: unknown) => {
+main().catch((error) => {
   console.error(error);
   process.exit(1);
 });

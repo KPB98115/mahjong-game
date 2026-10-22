@@ -1,4 +1,8 @@
-import { type ApiError, type HttpStatus } from "./api";
+import {
+  type GameActionErr,
+  type ResolveSessionOk,
+  type SocketTicketOk,
+} from "../../model/server/actionResult";
 
 export enum CookieName {
   Session = "session",
@@ -10,40 +14,14 @@ export type ResolveSessionInput = {
   now: Date;
 };
 
-export type ResolveSessionOk = {
-  userId: string;
-  sessionId: string;
-  rawToken: string;
-  refreshCookie: boolean;
-  cookieMaxAgeSeconds: number;
-};
+export type ResolveSessionResult = ResolveSessionOk | GameActionErr;
 
-export type ResolveSessionErr = {
-  error: ApiError;
-  status: HttpStatus;
-};
+export type SocketTicketResult = SocketTicketOk | GameActionErr;
 
-export type ResolveSessionResult = ResolveSessionOk | ResolveSessionErr;
-
-export type SessionResponse = {
-  userId: string;
-};
-
-export type SocketTicketOk = {
-  ticket: string;
-};
-
-export type SocketTicketErr = {
-  error: ApiError;
-  status: HttpStatus;
-};
-
-export type SocketTicketResult = SocketTicketOk | SocketTicketErr;
-
-export function isResolveSessionErr(result: ResolveSessionResult): result is ResolveSessionErr {
+export function isResolveSessionErr(result: ResolveSessionResult): result is GameActionErr {
   return "error" in result;
 }
 
-export function isSocketTicketErr(result: SocketTicketResult): result is SocketTicketErr {
+export function isSocketTicketErr(result: SocketTicketResult): result is GameActionErr {
   return "error" in result;
 }

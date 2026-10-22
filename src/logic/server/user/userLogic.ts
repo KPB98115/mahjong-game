@@ -1,27 +1,25 @@
+import { actionErrorSchema, type GameActionErr } from "../../../model/server/actionResult";
+import { profileResponseSchema, type ProfileResponse } from "../../../model/server/profileResponse";
 import {
   patchMeBodySchema,
   type PlayerAttributeRow,
   type PlayerFigureRow,
 } from "../../../model/server/playerProfile";
 import { ApiError, HttpStatus } from "../../../types/server/api";
+import { type JsonValue } from "../../../types/server/jsonValue";
 import {
   UserAttributeName,
   UserFigureJsonKey,
   UserFigureName,
-  type ProfileResponse,
 } from "../../../types/server/profile";
+import { type CurrentGameSource } from "../game/currentGameSource";
 import { type UserRepo } from "./userRepo";
 
 export type UpsertAttributesOk = {
   profile: ProfileResponse;
 };
 
-export type UpsertAttributesErr = {
-  error: ApiError;
-  status: HttpStatus;
-};
-
-export type UpsertAttributesResult = UpsertAttributesOk | UpsertAttributesErr;
+export type UpsertAttributesResult = UpsertAttributesOk | GameActionErr;
 
 const displayNameMinLength = 1;
 const displayNameMaxLength = 32;
@@ -37,31 +35,41 @@ const figureJsonKeyByName: Record<UserFigureName, UserFigureJsonKey> = {
 };
 
 export class UserLogic {
-  constructor(private userRepo: UserRepo) {}
+  constructor(
+    private userRepo: UserRepo,
+    private currentGameSource: CurrentGameSource,
+  ) {}
 
   async loadProfile(userId: string): Promise<ProfileResponse> {
     const attributes = await this.userRepo.listAttributes(userId);
     const figures = await this.userRepo.listFigures(userId);
-    return {
+    const currentGame = await this.currentGameSource.currentGameForUser(userId);
+    return profileResponseSchema.parse({
       userId,
       attributes: attributesToMap(attributes),
       figures: figuresToJson(figures),
-      currentGame: null,
-    };
+      currentGame,
+    });
   }
 
-  async upsertAttributes(userId: string, body: unknown): Promise<UpsertAttributesResult> {
+  async upsertAttributes(userId: string, body: JsonValue): Promise<UpsertAttributesResult> {
     const parsed = patchMeBodySchema.safeParse(body);
     if (!parsed.success) {
-      return { error: ApiError.InvalidBody, status: HttpStatus.UnprocessableEntity };
+      return actionErrorSchema.parse({
+        error: ApiError.InvalidBody,
+        status: HttpStatus.UnprocessableEntity,
+      });
     }
     const normalized = this.normalizeAttributes(parsed.data.attributes);
-    if (normalized === undefined) {
-      return { error: ApiError.InvalidBody, status: HttpStatus.UnprocessableEntity };
+    if (normalized == null) {
+      return actionErrorSchema.parse({
+        error: ApiError.InvalidBody,
+        status: HttpStatus.UnprocessableEntity,
+      });
     }
     for (const name of Object.keys(normalized)) {
       const value = normalized[name];
-      if (value === undefined) {
+      if (value == null) {
         continue;
       }
       await this.userRepo.upsertAttribute(userId, name, value);
@@ -95,9 +103,7 @@ export class UserLogic {
   }
 }
 
-export function isUpsertAttributesErr(
-  result: UpsertAttributesResult,
-): result is UpsertAttributesErr {
+export function isUpsertAttributesErr(result: UpsertAttributesResult): result is GameActionErr {
   return "error" in result;
 }
 
