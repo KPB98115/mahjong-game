@@ -1,0 +1,11 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "void/db": ["./shims/voidDb.ts"],
+      "@schema": ["../db/schema.ts"],
+      "@schema/*": ["../db/schema/*"]
+    }
+  },
+  "include": [".", "../src", "../db"]
+}

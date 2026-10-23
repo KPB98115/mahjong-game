@@ -58,6 +58,22 @@ npm run typecheck         # web app and shared src/
 npm run typecheck:socket  # socket-server
 ```
 
+### Bot integration test
+
+Runs two in-process scenarios with no database or Redis required — all state is in-memory:
+
+```sh
+npm run bot:play
+```
+
+**Scenario 1 — Deterministic Win:** A stacked wall deals seat 0 a near-complete hand (two chows + one east tile). `autoDraw` immediately draws the second east, giving seat 0 a winning hand on turn 1. The Smart bot detects this via `evaluateWin` and declares a self-draw win.
+
+**Scenario 2 — Random Play to Completion:** Four Low bots on a standard Hong Kong table. Low bots always discard the drawn tile and pass every claim window, so the game runs until the wall is exhausted (exhaustive draw).
+
+Both scenarios assert the expected terminal state and print `PASS` or exit with code 1 on failure.
+
+Bot logic lives in [`src/logic/server/game/bot/botPlayer.ts`](src/logic/server/game/bot/botPlayer.ts). See [`docs/bot.md`](docs/bot.md) for difficulty levels, `BotContext`, and the future socket-server integration path.
+
 ---
 
 ### Progress
@@ -74,8 +90,9 @@ npm run typecheck:socket  # socket-server
 | Redis: claim window answers, write-through round and hand cache, game channel (`gameAborted`, `gameChanged`, `nextWind`) | Done |
 | Socket.IO handlers: ticket auth, join, draw, discard, claim, pass, declare win, presence, claim timer, fan-out | Done |
 | Vue game client | Not started |
+| Bot players (Low / Medium / Smart difficulty, in-process integration test) | Done |
 
-Design notes live in `docs/` (`game.md`, `database.md`, `socket.md`, `types.md`).
+Design notes live in `docs/` (`game.md`, `database.md`, `socket.md`, `types.md`, `bot.md`).
 
 ---
 
