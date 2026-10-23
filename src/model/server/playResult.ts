@@ -3,7 +3,7 @@ import { type EmitTarget } from "../../types/server/emitTarget";
 import { MeldType } from "../../types/server/meldType";
 import { RoundPhase } from "../../types/server/roundPhase";
 import { RoundResultType } from "../../types/server/roundResultType";
-import { type SocketError } from "../../types/server/socketError";
+import { SocketError } from "../../types/server/socketError";
 import { type SocketEvent } from "../../types/server/socketEvent";
 import { WinKind } from "../../types/server/winKind";
 import { gameSnapshotSchema, roundScoreSchema, scorePaymentSchema } from "./gameSnapshot";
@@ -87,6 +87,14 @@ export const presencePayloadSchema = z.object({
   connected: z.boolean(),
 });
 
+export const gameAbortedPayloadSchema = z.object({
+  gameId: z.string(),
+});
+
+export const actionErrorPayloadSchema = z.object({
+  error: z.enum(SocketError),
+});
+
 export type GameAction = z.infer<typeof gameActionSchema>;
 export type DiscardAction = z.infer<typeof discardActionSchema>;
 export type ClaimAction = z.infer<typeof claimActionSchema>;
@@ -101,6 +109,8 @@ export type ClaimedPayload = z.infer<typeof claimedPayloadSchema>;
 export type TurnPayload = z.infer<typeof turnPayloadSchema>;
 export type RoundEndedPayload = z.infer<typeof roundEndedPayloadSchema>;
 export type PresencePayload = z.infer<typeof presencePayloadSchema>;
+export type GameAbortedPayload = z.infer<typeof gameAbortedPayloadSchema>;
+export type ActionErrorPayload = z.infer<typeof actionErrorPayloadSchema>;
 
 type SeatEmit<Event extends SocketEvent, Payload> = {
   event: Event;

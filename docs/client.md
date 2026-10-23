@@ -25,6 +25,45 @@ GET /game/{uuid}     → /register if no live session
 
 Loaders **do not mint** identity (`POST /api/session` only). First visit: no cookie, register SSR, client `AuthLogic.ensureSession()` after mount.
 
+## Shell (locked)
+
+The app is a **mobile-first PWA** with **one horizontal layout**. Desktop does not get its own composition: it shows that same layout inside a **16:9 frame**. Responsive behavior is **CSS**. Do not measure the viewport in JavaScript to place or size the UI.
+
+### PWA
+
+- Installable. Manifest, icons, and a service worker live under `src/static/`. `start_url` is `/`. `display` is `standalone`. `orientation` is `landscape`.
+- The worker caches the app shell only. It does not cache `/api/*` or the socket. Play still needs the network.
+- Viewport: `width=device-width, initial-scale=1, viewport-fit=cover`. Paint inside `env(safe-area-inset-*)` so landscape notches and home indicators do not cover tiles or controls.
+- Touch targets stay large. Actions that matter work without hover. `touch-action` and overscroll are set in CSS so the table does not pan the browser.
+
+### Horizontal only
+
+There is no portrait layout. Phone, tablet, and desktop all use the same wide, short composition (hand along the bottom, seats and discards across the width).
+
+`@media (orientation: portrait)` covers the shell with a rotate prompt. The prompt is a stylesheet rule, not a `matchMedia` listener and not a Vue branch on window size. The installed PWA stays `landscape`.
+
+### Desktop frame
+
+Phones and small tablets in landscape **fill the viewport** (`100dvw` × `100dvh`). Regions flex inside that box. That is the design target.
+
+Desktop and other large landscape viewports center one frame with `aspect-ratio: 16 / 9`, sized with `min()` so it fits the window and never grows past it. The rest of the window is an inert backdrop. Inside the frame, the mobile landscape UI runs against the frame as a **size container** (`container-type: size`), not against the monitor.
+
+Do not add a second grid, nav, or density for wide screens.
+
+### RWD
+
+Scale inside the landscape canvas, from phone widths through the 16:9 frame. Use flex, grid, `%`, and container query units (`cqw`, `cqh`) so type, tiles, and gaps track the frame. A breakpoint may only retune that horizontal layout (gap, type step). It does not switch to a portrait or desktop page.
+
+### CSS before JavaScript
+
+Layout, the frame, the portrait gate, scaling, and show/hide are CSS.
+
+Use `@media (orientation)`, `@container`, `aspect-ratio`, `dvh` / `dvw`, `cqw` / `cqh`, `:has()`, and `env(safe-area-inset-*)`.
+
+JavaScript does not read `innerWidth`, `resize`, or `matchMedia` to lay out the page, and it does not write pixel positions. When a value is data the stylesheet cannot know (claim-window duration, whose turn), logic may set a class or a custom property. The stylesheet still positions the UI.
+
+`pages/layout.vue` is this shell only: frame, backdrop, portrait gate, global CSS. No fetch, no socket, no game rules. Page files stay the routes in the table above.
+
 ## SSR then hydrate (locked)
 
 Loaders return **static** props only: enum option lists, create-game defaults, `socketOrigin`, and on the game page the path `uuid`. No hands, discards, seats, or profile in props.
@@ -152,7 +191,7 @@ Do not duplicate these shapes under `src/model/client`. Client models are for UI
 
 `JoinGameViewModel` holds a 5-character string. `RegisterLogic` allows send only when length is 5 and every character is `0`–`9` (char range, **no regex**). Wire value stays a string (`"04217"`). Format fail stays local until send; if the server still rejects, `invalidBody` or `gameNotFound` lands on the view model.
 
-Create-form optional numbers (`handTileCount`, `winMeldCount`, `minScoreUnits`) are omitted on the wire until the player changes them. Client Zod checks JSON type (`number`) only. Min/max stay in server `GamesLogic` (still open there). No `pages/layout.vue` this slice.
+Create-form optional numbers (`handTileCount`, `winMeldCount`, `minScoreUnits`) are omitted on the wire until the player changes them. Client Zod checks JSON type (`number`) only. Min/max stay in server `GamesLogic` (still open there). Shared chrome is `pages/layout.vue` (shell only; see Shell).
 
 Show `ApiError` / `SocketError` enum strings on the view model (`error`). Do not invent parallel UI error codes.
 
@@ -215,11 +254,15 @@ Wire enums stay in `src/types/server` and are imported by client logic and `src/
 ## Files (not written)
 
 ```text
+pages/layout.vue                   # shell: 16:9 frame, portrait gate, global CSS
 pages/index.server.ts              # redirect / → /register
 pages/register.vue
 pages/register.server.ts
 pages/game/[uuid].vue
 pages/game/[uuid].server.ts
+
+src/static/manifest.webmanifest    # standalone, landscape, start_url /
+src/static/…                       # PWA icons; service worker caches the shell only
 
 src/logic/client/http/apiClient.ts
 src/logic/client/auth/authLogic.ts
@@ -253,7 +296,8 @@ Tile faces are `tileCode` text on every tile widget (hand, discard, meld, flower
 - `referenceCode` is a 5-digit `0`–`9` string (client and server; no regex).
 - One seat per user (server). Abort on waiting and play dissolves the table (`POST .../abort`); no single-player leave.
 - Tile widgets render `tileCode` as text.
-- No root `pages/layout.vue` this slice.
+- Mobile-first PWA. One horizontal layout. Desktop is that layout inside a 16:9 frame. RWD and the portrait gate are CSS; JavaScript does not size the viewport.
+- `pages/layout.vue` is the shell only (frame, backdrop, rotate prompt). No fetch, socket, or game rules there.
 - Create-form integers: type only on the client; domain limits stay in `GamesLogic`.
 
 ## Open (client)
