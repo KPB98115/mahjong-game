@@ -9,12 +9,15 @@ import { type RoundRow } from "../logic/server/game/roundsRepo";
 import { type RoundsLogic } from "../logic/server/game/roundsLogic";
 import { type SeatsLogic } from "../logic/server/game/seatsLogic";
 import { isBonusTileCode } from "../logic/server/game/wallTileCodes";
+import { createRedisRoundCache, type RoundCache } from "../logic/server/redis/roundCache";
 import { type PlayEmit, type PlayOutcome } from "../model/server/playResult";
 import { type JsonValue } from "../types/server/jsonValue";
+import { type MeldType } from "../types/server/meldType";
 import { type SocketError } from "../types/server/socketError";
 import { type SocketEvent } from "../types/server/socketEvent";
 import { createMemoryAuth, type MemoryAuth } from "./fakeAuth";
 import { createMemoryGame, type MemoryGame } from "./memoryGame";
+import { createMemoryRedisCommands, type MemoryRedisCommands } from "./memoryRedisCommands";
 
 export const playNow = new Date("2026-06-01T00:00:00.000Z");
 
@@ -34,6 +37,8 @@ export type PlayWorldOptions = {
 export type PlayWorld = {
   tables: MemoryGame;
   auth: MemoryAuth;
+  redis: MemoryRedisCommands;
+  roundCache: RoundCache;
   repos: SnapshotRepos;
   gamesLogic: GamesLogic;
   seatsLogic: SeatsLogic;
@@ -82,6 +87,8 @@ export async function createPlayWorld(options: PlayWorldOptions = {}): Promise<P
     scorePaymentsRepo: tables.scorePaymentsRepo,
     userRepo: auth.userRepo,
   };
+  const redis = createMemoryRedisCommands();
+  const roundCache = createRedisRoundCache(redis);
   function build(): ReturnType<typeof createGameLogics> {
     return createGameLogics({
       repos,
@@ -89,6 +96,7 @@ export async function createPlayWorld(options: PlayWorldOptions = {}): Promise<P
       random,
       redis: tables.redis,
       claimWindowStore: createMemoryClaimWindowStore(),
+      roundCache,
     });
   }
   const logics = build();
@@ -149,6 +157,8 @@ export async function createPlayWorld(options: PlayWorldOptions = {}): Promise<P
   return {
     tables,
     auth,
+    redis,
+    roundCache,
     repos,
     gamesLogic: logics.gamesLogic,
     seatsLogic: logics.seatsLogic,
@@ -209,6 +219,54 @@ export async function discardDrawn(world: PlayWorld, seatIndex: number): Promise
     gameId: world.gameId,
     userId: userAt(world, seatIndex),
     tileId: tile.id,
+    now: playNow,
+  });
+}
+
+export async function discardCode(
+  world: PlayWorld,
+  seatIndex: number,
+  tileCode: string,
+): Promise<PlayOutcome> {
+  const [tileId] = await world.tileIds(seatIndex, [tileCode]);
+  if (tileId == null) {
+    throw new Error(`missing ${tileCode}`);
+  }
+  return world.roundsLogic.discard({
+    gameId: world.gameId,
+    userId: userAt(world, seatIndex),
+    tileId,
+    now: playNow,
+  });
+}
+
+export async function claimCodes(
+  world: PlayWorld,
+  seatIndex: number,
+  kind: MeldType,
+  codes: string[],
+): Promise<PlayOutcome> {
+  return world.roundsLogic.claim({
+    gameId: world.gameId,
+    userId: userAt(world, seatIndex),
+    kind,
+    tileIds: await world.tileIds(seatIndex, codes),
+    now: playNow,
+  });
+}
+
+export function pass(world: PlayWorld, seatIndex: number): Promise<PlayOutcome> {
+  return world.roundsLogic.passClaim({
+    gameId: world.gameId,
+    userId: userAt(world, seatIndex),
+    now: playNow,
+  });
+}
+
+export function declareWin(world: PlayWorld, seatIndex: number): Promise<PlayOutcome> {
+  return world.roundsLogic.declareWin({
+    gameId: world.gameId,
+    userId: userAt(world, seatIndex),
     now: playNow,
   });
 }

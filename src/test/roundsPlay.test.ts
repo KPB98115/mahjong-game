@@ -11,11 +11,15 @@ import { SocketError } from "../types/server/socketError";
 import { SocketEvent } from "../types/server/socketEvent";
 import { WinKind } from "../types/server/winKind";
 import {
+  claimCodes,
   createPlayWorld,
+  declareWin,
+  discardCode,
   discardDrawn,
   emitted,
   emittedEvents,
   expectPlayError,
+  pass,
   passOthers,
   playNow,
   userAt,
@@ -44,54 +48,6 @@ const claimWall: StackedWall = {
   draws: ["man_9"],
   tail: ["bam_9"],
 };
-
-async function discardCode(
-  world: PlayWorld,
-  seatIndex: number,
-  tileCode: string,
-): Promise<ReturnType<PlayWorld["roundsLogic"]["discard"]>> {
-  const [tileId] = await world.tileIds(seatIndex, [tileCode]);
-  if (tileId == null) {
-    throw new Error(`missing ${tileCode}`);
-  }
-  return world.roundsLogic.discard({
-    gameId: world.gameId,
-    userId: userAt(world, seatIndex),
-    tileId,
-    now: playNow,
-  });
-}
-
-async function claimCodes(
-  world: PlayWorld,
-  seatIndex: number,
-  kind: MeldType,
-  codes: string[],
-): Promise<ReturnType<PlayWorld["roundsLogic"]["claim"]>> {
-  return world.roundsLogic.claim({
-    gameId: world.gameId,
-    userId: userAt(world, seatIndex),
-    kind,
-    tileIds: await world.tileIds(seatIndex, codes),
-    now: playNow,
-  });
-}
-
-function pass(world: PlayWorld, seatIndex: number) {
-  return world.roundsLogic.passClaim({
-    gameId: world.gameId,
-    userId: userAt(world, seatIndex),
-    now: playNow,
-  });
-}
-
-function declareWin(world: PlayWorld, seatIndex: number) {
-  return world.roundsLogic.declareWin({
-    gameId: world.gameId,
-    userId: userAt(world, seatIndex),
-    now: playNow,
-  });
-}
 
 function figure(world: PlayWorld, seatIndex: number, name: UserFigureName): number | undefined {
   const row = world.auth.figures.find(

@@ -26,6 +26,8 @@ import { type GameTransaction, type SeatsLogic } from "./seatsLogic";
 
 export type GameRedis = {
   publishAborted(gameId: string): Promise<void>;
+  publishChanged(gameId: string): Promise<void>;
+  publishNextWind(gameId: string, nextGameId: string): Promise<void>;
   deleteCache(gameId: string): Promise<void>;
 };
 
@@ -172,7 +174,7 @@ export class GamesLogic {
     let deletedId: string | undefined;
     try {
       deletedId = await this.runTransaction(async (tx) => {
-        const game = await this.repos.gamesRepo.findById(gameId, tx);
+        const game = await this.repos.gamesRepo.lockById(gameId, tx);
         if (game == null) {
           throw new GameRuleFailure(apiFailure(ApiError.GameNotAbortable));
         }
@@ -214,7 +216,7 @@ export class GamesLogic {
     const referenceCode = current.referenceCode;
     try {
       const outcome = await this.runTransaction(async (tx) => {
-        const game = await this.repos.gamesRepo.findById(gameId, tx);
+        const game = await this.repos.gamesRepo.lockById(gameId, tx);
         if (game == null) {
           throw new GameRuleFailure(apiFailure(ApiError.GameNotFound));
         }
@@ -236,6 +238,9 @@ export class GamesLogic {
       });
       if (outcome.droppedId != null) {
         await this.dropCache(outcome.droppedId);
+        await this.notify(() => this.redis.publishNextWind(gameId, outcome.gameId));
+      } else {
+        await this.notify(() => this.redis.publishChanged(gameId));
       }
       return loadGameSnapshot(this.repos, outcome.gameId, userId);
     } catch (error) {
@@ -325,6 +330,14 @@ export class GamesLogic {
       await this.redis.deleteCache(gameId);
     } catch {
       // Postgres is the source of truth.
+    }
+  }
+
+  private async notify(send: () => Promise<void>): Promise<void> {
+    try {
+      await send();
+    } catch {
+      // Sockets reconcile from HTTP GET after reconnect.
     }
   }
 }

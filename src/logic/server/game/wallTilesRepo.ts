@@ -1,25 +1,30 @@
 import { wallTiles } from "@schema";
-import { asc, eq } from "void/db";
-import { executor, type DbExecutor } from "../db/executor";
+import { asc, eq } from "drizzle-orm";
+import { executor, type AppDatabase, type DbExecutor } from "../db/executor";
 
 export type WallTileRow = typeof wallTiles.$inferSelect;
 export type NewWallTile = typeof wallTiles.$inferInsert;
 
 export class WallTilesRepo {
+  constructor(readonly database: AppDatabase) {}
+
   async insertMany(values: NewWallTile[], tx?: DbExecutor): Promise<WallTileRow[]> {
     if (values.length === 0) {
       return [];
     }
-    return executor(tx).insert(wallTiles).values(values).returning();
+    return executor(tx, this.database).insert(wallTiles).values(values).returning();
   }
 
   async findById(id: string, tx?: DbExecutor): Promise<WallTileRow | undefined> {
-    const [row] = await executor(tx).select().from(wallTiles).where(eq(wallTiles.id, id));
+    const [row] = await executor(tx, this.database)
+      .select()
+      .from(wallTiles)
+      .where(eq(wallTiles.id, id));
     return row;
   }
 
   async findByRoundId(roundId: string, tx?: DbExecutor): Promise<WallTileRow[]> {
-    return executor(tx)
+    return executor(tx, this.database)
       .select()
       .from(wallTiles)
       .where(eq(wallTiles.roundId, roundId))
@@ -27,6 +32,6 @@ export class WallTilesRepo {
   }
 
   async deleteById(id: string, tx?: DbExecutor): Promise<void> {
-    await executor(tx).delete(wallTiles).where(eq(wallTiles.id, id));
+    await executor(tx, this.database).delete(wallTiles).where(eq(wallTiles.id, id));
   }
 }

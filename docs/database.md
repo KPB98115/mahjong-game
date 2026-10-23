@@ -400,11 +400,14 @@ Upsert before the game is deleted:
 
 | Key | Contents |
 | --- | --- |
-| `game:{gameId}:round` | Cache of the round row plus wall, discards, melds |
-| `game:{gameId}:hand:{seat}` | Cache of that seat’s concealed hand |
-| Pub/sub `game:{gameId}` | Fan-out from HTTP (abort): `{ "event": "gameAborted", "gameId" }`. Socket-server emits to the room. |
+| `game:{gameId}:round` | The `publicState` payload (game, seats, round, public tiles, scores). 24 h TTL. |
+| `game:{gameId}:hand:{seat}` | `{ tiles }`: that seat's concealed hand in the `selfHand` shape. 24 h TTL. |
+| `game:{gameId}:claimWindow` | Answers for the open claim / rob-kong window (`ClaimWindowState`). Saved inside the locked play transaction, deleted after it resolves. 24 h TTL. |
+| Pub/sub `game:{gameId}` | Fan-out from HTTP: `gameAborted`, `gameChanged`, `nextWind` (see [`docs/socket.md`](socket.md#game-channel-redis-pubsub)). |
 
-On miss, read Postgres and SET. Never treat a Redis value as authoritative.
+Write-through: after each play commit, logic writes `round` and every seat's `hand`. Reads (`snapshotForSeat`) use the cache and rebuild from Postgres on a miss. Redis errors on the round cache never fail an action. `gameChanged` deletes the cache keys before publishing. Never treat a Redis value as authoritative.
+
+Every play transaction starts with `SELECT ... FOR UPDATE` on the `game.games` row, so two actions on the same table never interleave.
 
 ### Four winds (locked)
 

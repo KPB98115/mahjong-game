@@ -116,6 +116,7 @@ export function createMemoryAuth(): MemoryAuth {
   let sessionCount = 0;
 
   const authRepo: AuthRepo = {
+    database: db,
     async insert(values) {
       insertOrder.push("session");
       sessionCount += 1;
@@ -153,6 +154,7 @@ export function createMemoryAuth(): MemoryAuth {
     },
   };
   const userRepo: UserRepo = {
+    database: db,
     async insert(values = {}) {
       insertOrder.push("user");
       userCount += 1;
@@ -195,6 +197,7 @@ export function createMemoryAuth(): MemoryAuth {
     },
   };
   const seatsRepo: SeatsRepo = {
+    database: db,
     async insert(values) {
       const row: SeatRow = {
         id: values.id ?? `seat-${values.userId}`,
@@ -320,6 +323,7 @@ export function createUserRepoFake(initial?: {
   const figures = initial?.figures ?? [];
   const upserts: { userId: string; name: string; value: string }[] = [];
   const repo: UserRepo = {
+    database: db,
     async insert() {
       throw new Error("insert is not used by UserLogic");
     },

@@ -1,4 +1,9 @@
-import { type PlayEmit, type PlayOutcome } from "../../../model/server/playResult";
+import {
+  type PlayEmit,
+  type PlayOutcome,
+  type PublicStatePayload,
+  type SelfHandTile,
+} from "../../../model/server/playResult";
 import { ClaimAnswerKind } from "../../../types/server/claimAnswerKind";
 import { GameStatus } from "../../../types/server/gameStatus";
 import { MeldType } from "../../../types/server/meldType";
@@ -8,6 +13,7 @@ import { RoundStatus } from "../../../types/server/roundStatus";
 import { SocketError } from "../../../types/server/socketError";
 import { WinKind } from "../../../types/server/winKind";
 import { type DbExecutor } from "../db/executor";
+import { type RoundCache } from "../redis/roundCache";
 import { type ClaimAnswer, type ClaimWindowState, type ClaimWindowStore } from "./claimWindowStore";
 import { type DiscardTileRow } from "./discardTilesRepo";
 import { type DiscardTilesLogic } from "./discardTilesLogic";
@@ -25,6 +31,7 @@ import {
   claimWindowEmit,
   discardedEmit,
   drewEmit,
+  handTilesOf,
   joinedEmit,
   presenceEmit,
   publicStateEmit,
@@ -54,6 +61,7 @@ export type RoundsLogicDeps = {
   roundScoresLogic: RoundScoresLogic;
   scorePaymentsLogic: ScorePaymentsLogic;
   claimWindowStore: ClaimWindowStore;
+  roundCache: RoundCache;
   runTransaction: GameTransaction;
   random: GameRandom;
 };
@@ -174,18 +182,43 @@ export class RoundsLogic {
     if (seat == null) {
       return { ok: false, error: SocketError.NotSeated };
     }
-    const rounds = await repos.roundsRepo.findByGameId(game.id);
-    const round = rounds[rounds.length - 1];
-    const hand =
-      round == null ? undefined : await this.deps.handsLogic.findForSeat(round.id, seat.seatIndex);
-    const tiles = hand == null ? [] : await this.deps.handTilesLogic.list(hand.id);
+    const { roundCache } = this.deps;
+    let tiles = await roundCache.findHand(game.id, seat.seatIndex);
+    let publicState = await roundCache.findPublicState(game.id);
+    if (tiles == null || publicState == null) {
+      tiles = await this.loadHand(game.id, seat.seatIndex);
+      publicState = await loadPublicState(repos, game.id);
+      await roundCache.saveHand(game.id, seat.seatIndex, tiles);
+      if (publicState != null) {
+        await roundCache.savePublicState(game.id, publicState);
+      }
+    }
     const emits = [joinedEmit(game.id, seat.seatIndex), selfHandEmit(seat.seatIndex, tiles)];
-    const publicState = await loadPublicState(repos, game.id);
     if (publicState != null) {
       emits.push(publicStateEmit(publicState));
     }
     emits.push(presenceEmit(seat.seatIndex, true));
     return { ok: true, result: { gameId: game.id, emits } };
+  }
+
+  private async loadHand(gameId: string, seatIndex: number): Promise<SelfHandTile[]> {
+    const rounds = await this.deps.repos.roundsRepo.findByGameId(gameId);
+    const round = rounds[rounds.length - 1];
+    const hand =
+      round == null ? undefined : await this.deps.handsLogic.findForSeat(round.id, seatIndex);
+    return hand == null ? [] : handTilesOf(await this.deps.handTilesLogic.list(hand.id));
+  }
+
+  private async refreshCache(gameId: string, publicState: PublicStatePayload): Promise<void> {
+    const { roundCache } = this.deps;
+    await roundCache.savePublicState(gameId, publicState);
+    for (const seat of publicState.seats) {
+      await roundCache.saveHand(
+        gameId,
+        seat.seatIndex,
+        await this.loadHand(gameId, seat.seatIndex),
+      );
+    }
   }
 
   async draw(input: PlayInput): Promise<PlayOutcome> {
@@ -258,6 +291,9 @@ export class RoundsLogic {
       if (context.round.phase === RoundPhase.Claim) {
         return this.claimDiscard(context, input, tx);
       }
+      if (context.round.phase === RoundPhase.RobKong) {
+        return failPlay(SocketError.InvalidClaim);
+      }
       if (this.isTurn(context, RoundPhase.Discard)) {
         return this.ownTurnKong(context, input, tx);
       }
@@ -268,7 +304,7 @@ export class RoundsLogic {
   async passClaim(input: PlayInput): Promise<PlayOutcome> {
     return this.act(input.gameId, async (tx) => {
       const context = await this.seatContext(input.gameId, input.userId, tx);
-      if (context.round.phase !== RoundPhase.Claim) {
+      if (!isWindowPhase(context.round.phase)) {
         failPlay(SocketError.NoClaimWindow);
       }
       const discard = await this.lastDiscard(context.round, tx);
@@ -282,7 +318,7 @@ export class RoundsLogic {
   async passUnanswered(input: { gameId: string; now: Date }): Promise<PlayOutcome> {
     return this.act(input.gameId, async (tx) => {
       const context = await this.tableContext(input.gameId, tx);
-      if (context.round.phase !== RoundPhase.Claim) {
+      if (!isWindowPhase(context.round.phase)) {
         failPlay(SocketError.NoClaimWindow);
       }
       const discard = await this.lastDiscard(context.round, tx);
@@ -300,12 +336,19 @@ export class RoundsLogic {
     return this.act(input.gameId, async (tx) => {
       const context = await this.seatContext(input.gameId, input.userId, tx);
       const seatIndex = context.seat.seatIndex;
-      if (context.round.phase === RoundPhase.Claim) {
+      if (isWindowPhase(context.round.phase)) {
         const discard = await this.lastDiscard(context.round, tx);
         if (discard.seatIndex === seatIndex) {
           failPlay(SocketError.NotYourTurn);
         }
-        const score = await this.scoreWin(context, seatIndex, WinKind.Discard, discard, tx);
+        const score = await this.scoreWin(
+          context,
+          seatIndex,
+          WinKind.Discard,
+          discard.tileCode,
+          context.round.phase === RoundPhase.RobKong,
+          tx,
+        );
         if (score == null) {
           failPlay(SocketError.InvalidClaim);
         }
@@ -317,7 +360,7 @@ export class RoundsLogic {
       const hand = await this.deps.handsLogic.requireForSeat(context.round.id, seatIndex, tx);
       const tiles = await this.deps.handTilesLogic.list(hand.id, tx);
       const score = tiles.some((tile) => tile.isDrawn)
-        ? await this.scoreWin(context, seatIndex, WinKind.SelfDraw, undefined, tx)
+        ? await this.scoreWin(context, seatIndex, WinKind.SelfDraw, undefined, false, tx)
         : undefined;
       if (score == null) {
         failPlay(SocketError.InvalidClaim);
@@ -332,7 +375,13 @@ export class RoundsLogic {
   ): Promise<PlayOutcome> {
     let draft: Draft;
     try {
-      draft = await this.deps.runTransaction(work);
+      draft = await this.deps.runTransaction(async (tx) => {
+        const result = await work(tx);
+        if (result.saveWindow != null) {
+          await this.deps.claimWindowStore.save(gameId, result.saveWindow);
+        }
+        return result;
+      });
     } catch (error) {
       if (typeof error !== "object" || error == null) {
         throw error;
@@ -346,13 +395,11 @@ export class RoundsLogic {
     if (draft.clearWindow) {
       await this.deps.claimWindowStore.clear(gameId);
     }
-    if (draft.saveWindow != null) {
-      await this.deps.claimWindowStore.save(gameId, draft.saveWindow);
-    }
     const emits = draft.emits.slice();
     if (draft.publicState) {
       const publicState = await loadPublicState(this.deps.repos, gameId);
       if (publicState != null) {
+        await this.refreshCache(gameId, publicState);
         emits.push(publicStateEmit(publicState));
       }
     }
@@ -361,7 +408,7 @@ export class RoundsLogic {
 
   private async tableContext(gameId: string, tx: DbExecutor): Promise<TableContext> {
     const { repos } = this.deps;
-    const game = await repos.gamesRepo.findById(gameId, tx);
+    const game = await repos.gamesRepo.lockById(gameId, tx);
     if (game == null) {
       return failPlay(SocketError.StaleGame);
     }
@@ -371,7 +418,7 @@ export class RoundsLogic {
 
   private async seatContext(gameId: string, userId: string, tx: DbExecutor): Promise<SeatContext> {
     const { repos } = this.deps;
-    const game = await repos.gamesRepo.findById(gameId, tx);
+    const game = await repos.gamesRepo.lockById(gameId, tx);
     if (game == null) {
       return failPlay(SocketError.StaleGame);
     }
@@ -503,11 +550,21 @@ export class RoundsLogic {
     tx: DbExecutor,
   ): Promise<Draft> {
     const best = this.deps.meldsLogic.pickClaim(window.answers, discard.seatIndex);
+    const robbingKong = context.round.phase === RoundPhase.RobKong;
     let draft: Draft;
-    if (best == null) {
+    if (best == null && robbingKong) {
+      draft = await this.commitRobbableKong(context, discard, now, tx);
+    } else if (best == null) {
       draft = await this.advanceTurn(context, discard.seatIndex, now, tx);
     } else if (best.answer.kind === ClaimAnswerKind.Win) {
-      const score = await this.scoreWin(context, best.seatIndex, WinKind.Discard, discard, tx);
+      const score = await this.scoreWin(
+        context,
+        best.seatIndex,
+        WinKind.Discard,
+        discard.tileCode,
+        robbingKong,
+        tx,
+      );
       if (score == null) {
         throw new Error("recorded win no longer scores");
       }
@@ -646,9 +703,73 @@ export class RoundsLogic {
         return failPlay(SocketError.InvalidClaim);
       }
       await handTilesLogic.remove([added], tx);
+      if (await this.canBeRobbed(context, seatIndex, added.tileCode, tx)) {
+        return this.openRobWindow(context, seatIndex, added.tileCode, input.now, tx);
+      }
       meld = await meldsLogic.upgradeToKong(pong, added.tileCode, tx);
     }
     return this.afterMeld(context, seatIndex, hand.id, meld, input.now, tx);
+  }
+
+  private async canBeRobbed(
+    context: TableContext,
+    kongSeatIndex: number,
+    tileCode: string,
+    tx: DbExecutor,
+  ): Promise<boolean> {
+    for (const seatIndex of otherSeats(kongSeatIndex)) {
+      if ((await this.scoreWin(context, seatIndex, WinKind.Discard, tileCode, true, tx)) != null) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private async openRobWindow(
+    context: TableContext,
+    kongSeatIndex: number,
+    tileCode: string,
+    now: Date,
+    tx: DbExecutor,
+  ): Promise<Draft> {
+    const { round, game } = context;
+    const shown = await this.deps.discardTilesLogic.discard(round.id, kongSeatIndex, tileCode, tx);
+    await this.deps.repos.roundsRepo.update(
+      round.id,
+      { phase: RoundPhase.RobKong, updatedAt: now },
+      tx,
+    );
+    return {
+      emits: [claimWindowEmit(kongSeatIndex, tileCode, game.claimWindowMs)],
+      publicState: true,
+      saveWindow: { roundId: round.id, discardTileId: shown.id, answers: [] },
+    };
+  }
+
+  private async commitRobbableKong(
+    context: TableContext,
+    shown: DiscardTileRow,
+    now: Date,
+    tx: DbExecutor,
+  ): Promise<Draft> {
+    const { handsLogic, discardTilesLogic, meldsLogic, repos } = this.deps;
+    const seatIndex = shown.seatIndex;
+    await discardTilesLogic.take(shown, tx);
+    const pong = meldsLogic.findUpgradablePong(
+      await meldsLogic.listForSeat(context.round.id, seatIndex, tx),
+      shown.tileCode,
+    );
+    if (pong == null) {
+      throw new Error("robbable kong lost its pong");
+    }
+    const meld = await meldsLogic.upgradeToKong(pong, shown.tileCode, tx);
+    await repos.roundsRepo.update(
+      context.round.id,
+      { phase: RoundPhase.Discard, updatedAt: now },
+      tx,
+    );
+    const hand = await handsLogic.requireForSeat(context.round.id, seatIndex, tx);
+    return this.afterMeld(context, seatIndex, hand.id, meld, now, tx);
   }
 
   private async afterMeld(
@@ -668,7 +789,7 @@ export class RoundsLogic {
       return {
         emits: [
           claimed,
-          selfHandEmit(seatIndex, await this.deps.handTilesLogic.list(handId, tx)),
+          selfHandEmit(seatIndex, handTilesOf(await this.deps.handTilesLogic.list(handId, tx))),
           turnEmit(seatIndex, RoundPhase.Discard),
         ],
         publicState: true,
@@ -683,7 +804,7 @@ export class RoundsLogic {
     return {
       emits: [
         claimed,
-        selfHandEmit(seatIndex, await this.deps.handTilesLogic.list(handId, tx)),
+        selfHandEmit(seatIndex, handTilesOf(await this.deps.handTilesLogic.list(handId, tx))),
         drewEmit(
           seatIndex,
           drawn.tile,
@@ -776,7 +897,8 @@ export class RoundsLogic {
     context: TableContext,
     seatIndex: number,
     winKind: WinKind,
-    discard: DiscardTileRow | undefined,
+    winningTileCode: string | undefined,
+    robbingKong: boolean,
     tx: DbExecutor,
   ): Promise<WinScore | undefined> {
     const { game, round } = context;
@@ -788,8 +910,8 @@ export class RoundsLogic {
     const tiles = await this.deps.handTilesLogic.list(hand.id, tx);
     const melds = await this.deps.meldsLogic.listForSeat(round.id, seatIndex, tx);
     const concealed = tiles.map((tile) => tile.tileCode);
-    if (discard != null) {
-      concealed.push(discard.tileCode);
+    if (winningTileCode != null) {
+      concealed.push(winningTileCode);
     }
     const score = evaluateWin(chart, {
       concealedTileCodes: concealed,
@@ -806,6 +928,7 @@ export class RoundsLogic {
       flowerTileCodes: await this.deps.flowerTilesLogic.listForSeat(round.id, seatIndex, tx),
       bonusTilesEnabled: game.bonusTilesEnabled,
       wallEmpty: (await this.deps.wallTilesLogic.remainingCount(round.id, tx)) === 0,
+      robbingKong,
     });
     if (score == null || score.units < Number(game.minScoreUnits)) {
       return undefined;
@@ -902,6 +1025,10 @@ export class RoundsLogic {
       tx,
     );
   }
+}
+
+function isWindowPhase(phase: RoundPhase): boolean {
+  return phase === RoundPhase.Claim || phase === RoundPhase.RobKong;
 }
 
 function otherSeats(seatIndex: number): number[] {

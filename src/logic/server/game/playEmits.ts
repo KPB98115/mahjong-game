@@ -11,6 +11,7 @@ import {
   type PlayEmit,
   type PublicStatePayload,
   type RoundEndedPayload,
+  type SelfHandTile,
 } from "../../../model/server/playResult";
 import { EmitTarget } from "../../../types/server/emitTarget";
 import { type MeldType } from "../../../types/server/meldType";
@@ -27,19 +28,21 @@ export function joinedEmit(gameId: string, seatIndex: number): PlayEmit {
   };
 }
 
-export function selfHandEmit(seatIndex: number, tiles: HandTileRow[]): PlayEmit {
+export function handTilesOf(rows: HandTileRow[]): SelfHandTile[] {
+  return rows.map((tile) => ({
+    tileId: tile.id,
+    tileCode: tile.tileCode,
+    sortIndex: tile.sortIndex,
+    isDrawn: tile.isDrawn,
+  }));
+}
+
+export function selfHandEmit(seatIndex: number, tiles: SelfHandTile[]): PlayEmit {
   return {
     event: SocketEvent.SelfHand,
     target: EmitTarget.Seat,
     seatIndex,
-    payload: selfHandPayloadSchema.parse({
-      tiles: tiles.map((tile) => ({
-        tileId: tile.id,
-        tileCode: tile.tileCode,
-        sortIndex: tile.sortIndex,
-        isDrawn: tile.isDrawn,
-      })),
-    }),
+    payload: selfHandPayloadSchema.parse({ tiles }),
   };
 }
 

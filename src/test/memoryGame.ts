@@ -75,18 +75,38 @@ export type MemoryGame = {
   redis: GameRedis;
   published: string[];
   deletedCaches: string[];
+  changed: string[];
+  nextWinds: NextWindNotice[];
+  lockedGameIds: string[];
+};
+
+export type NextWindNotice = {
+  gameId: string;
+  nextGameId: string;
+};
+
+type MemoryTransaction = {
+  saved: MemoryState;
+  heldGameIds: Set<string>;
+  releases: (() => void)[];
 };
 
 export function createMemoryGame(): MemoryGame {
   let state: MemoryState = emptyState();
   const published: string[] = [];
   const deletedCaches: string[] = [];
+  const changed: string[] = [];
+  const nextWinds: NextWindNotice[] = [];
+  const lockedGameIds: string[] = [];
+  const transactions = new WeakMap<DbExecutor, MemoryTransaction>();
+  const gameLocks = new Map<string, Promise<void>>();
 
   function id(): string {
     return crypto.randomUUID();
   }
 
   const gamesRepo: GamesRepo = {
+    database: db,
     async insert(values: NewGame) {
       assertUnique(
         !state.games.some((row) => row.referenceCode === values.referenceCode),
@@ -121,6 +141,29 @@ export function createMemoryGame(): MemoryGame {
     async findById(gameId: string) {
       return state.games.find((row) => row.id === gameId);
     },
+    async lockById(gameId: string, tx: DbExecutor) {
+      const transaction = transactions.get(tx);
+      if (transaction == null) {
+        throw new Error("lockById needs a transaction");
+      }
+      lockedGameIds.push(gameId);
+      if (!transaction.heldGameIds.has(gameId)) {
+        const previous = gameLocks.get(gameId) ?? Promise.resolve();
+        let release = (): void => {};
+        const held = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        gameLocks.set(
+          gameId,
+          previous.then(() => held),
+        );
+        await previous;
+        transaction.heldGameIds.add(gameId);
+        transaction.releases.push(release);
+        transaction.saved = structuredClone(state);
+      }
+      return state.games.find((row) => row.id === gameId);
+    },
     async findByReferenceCode(referenceCode: string) {
       return state.games.find((row) => row.referenceCode === referenceCode);
     },
@@ -141,6 +184,7 @@ export function createMemoryGame(): MemoryGame {
   };
 
   const seatsRepo: SeatsRepo = {
+    database: db,
     async insert(values: NewSeat) {
       assertUnique(
         !state.seats.some((row) => row.userId === values.userId),
@@ -189,6 +233,7 @@ export function createMemoryGame(): MemoryGame {
   };
 
   const roundsRepo: RoundsRepo = {
+    database: db,
     async insert(values: NewRound) {
       const now = new Date();
       const row: RoundRow = {
@@ -229,6 +274,7 @@ export function createMemoryGame(): MemoryGame {
   };
 
   const handsRepo: HandsRepo = {
+    database: db,
     async insert(values: NewHand) {
       const now = new Date();
       const row: HandRow = {
@@ -253,6 +299,7 @@ export function createMemoryGame(): MemoryGame {
   };
 
   const handTilesRepo: HandTilesRepo = {
+    database: db,
     async insert(values: NewHandTile) {
       const row = handTileFrom(values, id());
       state.handTiles.push(row);
@@ -285,6 +332,7 @@ export function createMemoryGame(): MemoryGame {
   };
 
   const wallTilesRepo: WallTilesRepo = {
+    database: db,
     async insertMany(values: NewWallTile[]) {
       const rows = values.map((values) => wallTileFrom(values, id()));
       state.wallTiles.push(...rows);
@@ -304,6 +352,7 @@ export function createMemoryGame(): MemoryGame {
   };
 
   const flowerTilesRepo: FlowerTilesRepo = {
+    database: db,
     async insert(values: NewFlowerTile) {
       const row: FlowerTileRow = {
         id: values.id ?? id(),
@@ -330,6 +379,7 @@ export function createMemoryGame(): MemoryGame {
   };
 
   const discardTilesRepo: DiscardTilesRepo = {
+    database: db,
     async insert(values: NewDiscardTile) {
       const row: DiscardTileRow = {
         id: values.id ?? id(),
@@ -355,6 +405,7 @@ export function createMemoryGame(): MemoryGame {
   };
 
   const meldsRepo: MeldsRepo = {
+    database: db,
     async insert(values: NewMeld) {
       const now = new Date();
       const row: MeldRow = {
@@ -396,6 +447,7 @@ export function createMemoryGame(): MemoryGame {
   };
 
   const meldTilesRepo: MeldTilesRepo = {
+    database: db,
     async insert(values: NewMeldTile) {
       const row = meldTileFrom(values, id());
       state.meldTiles.push(row);
@@ -414,6 +466,7 @@ export function createMemoryGame(): MemoryGame {
   };
 
   const roundScoresRepo: RoundScoresRepo = {
+    database: db,
     async insert(values: NewRoundScore) {
       const row = roundScoreFrom(values, id());
       state.roundScores.push(row);
@@ -432,6 +485,7 @@ export function createMemoryGame(): MemoryGame {
   };
 
   const scorePaymentsRepo: ScorePaymentsRepo = {
+    database: db,
     async insert(values: NewScorePayment) {
       const row = paymentFrom(values, id());
       state.scorePayments.push(row);
@@ -461,17 +515,33 @@ export function createMemoryGame(): MemoryGame {
     roundScoresRepo,
     scorePaymentsRepo,
     async runTransaction(callback) {
-      const saved = structuredClone(state);
+      const transaction: MemoryTransaction = {
+        saved: structuredClone(state),
+        heldGameIds: new Set(),
+        releases: [],
+      };
+      const tx = new Proxy(db, {});
+      transactions.set(tx, transaction);
       try {
-        return await callback(db);
+        return await callback(tx);
       } catch (error) {
-        state = saved;
+        state = transaction.saved;
         throw error;
+      } finally {
+        for (const release of transaction.releases) {
+          release();
+        }
       }
     },
     redis: {
       async publishAborted(gameId: string) {
         published.push(gameId);
+      },
+      async publishChanged(gameId: string) {
+        changed.push(gameId);
+      },
+      async publishNextWind(gameId: string, nextGameId: string) {
+        nextWinds.push({ gameId, nextGameId });
       },
       async deleteCache(gameId: string) {
         deletedCaches.push(gameId);
@@ -479,6 +549,9 @@ export function createMemoryGame(): MemoryGame {
     },
     published,
     deletedCaches,
+    changed,
+    nextWinds,
+    lockedGameIds,
   };
 }
 

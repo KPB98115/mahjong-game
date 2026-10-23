@@ -6,6 +6,7 @@ export enum ScoringPattern {
   OwnFlower = "ownFlower",
   FlowerSet = "flowerSet",
   LastTileSelfDraw = "lastTileSelfDraw",
+  RobbingKong = "robbingKong",
   AllChows = "allChows",
   AllPongs = "allPongs",
   HalfFlush = "halfFlush",

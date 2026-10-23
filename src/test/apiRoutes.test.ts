@@ -6,6 +6,7 @@ import { createMemoryClaimWindowStore } from "../logic/server/game/claimWindowSt
 import { createGameLogics } from "../logic/server/game/gameLogics";
 import { type GameRandom } from "../logic/server/game/gameRandom";
 import { scoringCatalogVersion } from "../logic/server/game/scoringVersion";
+import { createRedisRoundCache } from "../logic/server/redis/roundCache";
 import { standardWallTileCodes } from "../logic/server/game/wallTileCodes";
 import {
   getGame,
@@ -37,6 +38,7 @@ import { Ruleset } from "../types/server/ruleset";
 import { ScoreUnit } from "../types/server/scoreUnit";
 import { createMemoryAuth, createMemoryRedis } from "./fakeAuth";
 import { createMemoryGame } from "./memoryGame";
+import { createMemoryRedisCommands } from "./memoryRedisCommands";
 
 const now = new Date("2026-06-01T00:00:00.000Z");
 const missingGameId = "00000000-0000-0000-0000-000000000000";
@@ -87,6 +89,7 @@ function createWorld(random: GameRandom = fixedRandom()) {
     random,
     redis: tables.redis,
     claimWindowStore: createMemoryClaimWindowStore(),
+    roundCache: createRedisRoundCache(createMemoryRedisCommands()),
   });
   const authLogic = new AuthLogic(
     auth.authRepo,

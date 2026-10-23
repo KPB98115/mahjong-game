@@ -33,6 +33,7 @@ export type WinContext = {
   flowerTileCodes: string[];
   bonusTilesEnabled: boolean;
   wallEmpty: boolean;
+  robbingKong: boolean;
 };
 
 export type PatternScore = {
@@ -160,6 +161,7 @@ function addSituationPatterns(counts: PatternCounts, context: WinContext): void 
   ).length;
   setCount(counts, ScoringPattern.FlowerSet, fullSets);
   setWhen(counts, ScoringPattern.LastTileSelfDraw, selfDraw && context.wallEmpty);
+  setWhen(counts, ScoringPattern.RobbingKong, !selfDraw && context.robbingKong);
 }
 
 function addSuitPatterns(counts: PatternCounts, tileCodes: string[]): void {

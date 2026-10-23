@@ -1,6 +1,6 @@
 import { rounds } from "@schema";
-import { asc, eq } from "void/db";
-import { executor, type DbExecutor } from "../db/executor";
+import { asc, eq } from "drizzle-orm";
+import { executor, type AppDatabase, type DbExecutor } from "../db/executor";
 
 export type RoundRow = typeof rounds.$inferSelect;
 export type NewRound = typeof rounds.$inferInsert;
@@ -19,8 +19,10 @@ export type RoundUpdate = Partial<
 >;
 
 export class RoundsRepo {
+  constructor(readonly database: AppDatabase) {}
+
   async insert(values: NewRound, tx?: DbExecutor): Promise<RoundRow> {
-    const [row] = await executor(tx).insert(rounds).values(values).returning();
+    const [row] = await executor(tx, this.database).insert(rounds).values(values).returning();
     if (row == null) {
       throw new Error("insert round returned no row");
     }
@@ -28,12 +30,12 @@ export class RoundsRepo {
   }
 
   async findById(id: string, tx?: DbExecutor): Promise<RoundRow | undefined> {
-    const [row] = await executor(tx).select().from(rounds).where(eq(rounds.id, id));
+    const [row] = await executor(tx, this.database).select().from(rounds).where(eq(rounds.id, id));
     return row;
   }
 
   async findByGameId(gameId: string, tx?: DbExecutor): Promise<RoundRow[]> {
-    return executor(tx)
+    return executor(tx, this.database)
       .select()
       .from(rounds)
       .where(eq(rounds.gameId, gameId))
@@ -41,7 +43,7 @@ export class RoundsRepo {
   }
 
   async update(id: string, values: RoundUpdate, tx?: DbExecutor): Promise<RoundRow | undefined> {
-    const [row] = await executor(tx)
+    const [row] = await executor(tx, this.database)
       .update(rounds)
       .set(values)
       .where(eq(rounds.id, id))

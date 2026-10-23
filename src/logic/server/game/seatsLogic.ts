@@ -10,6 +10,7 @@ import { apiFailure } from "../http/apiFailure";
 import { type CurrentGameSource } from "./currentGameSource";
 import { type GameRandom } from "./gameRandom";
 import { GameRuleFailure, readGameRuleFailure } from "./gameRuleFailure";
+import { type GameRedis } from "./gamesLogic";
 import { type GamesRepo } from "./gamesRepo";
 import { loadGameSnapshot, type SnapshotRepos, type SnapshotResult } from "./loadGameSnapshot";
 import { isFiveDigitCode } from "./referenceCode";
@@ -28,6 +29,7 @@ export class SeatsLogic implements CurrentGameSource {
     private repos: SnapshotRepos,
     private runTransaction: GameTransaction,
     private random: GameRandom,
+    private redis: GameRedis,
   ) {}
 
   async currentGameForUser(userId: string): Promise<CurrentGame | null> {
@@ -93,6 +95,11 @@ export class SeatsLogic implements CurrentGameSource {
         }
         return game.id;
       });
+      try {
+        await this.redis.publishChanged(gameId);
+      } catch {
+        // Sockets reconcile from HTTP GET after reconnect.
+      }
       return loadGameSnapshot(this.repos, gameId, userId);
     } catch (error) {
       if (typeof error !== "object" || error == null) {

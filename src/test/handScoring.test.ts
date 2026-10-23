@@ -30,6 +30,7 @@ function context(overrides: Partial<WinContext>): WinContext {
     flowerTileCodes: [],
     bonusTilesEnabled: true,
     wallEmpty: false,
+    robbingKong: false,
     ...overrides,
   };
 }
@@ -96,6 +97,29 @@ describe("evaluateWin (hong kong)", () => {
         { pattern: ScoringPattern.AllChows, units: 1 },
       ],
     });
+  });
+
+  it("adds robbing the kong to a discard-style win", () => {
+    expect(
+      evaluateWin(
+        chart(Ruleset.HongKong),
+        context({ concealedTileCodes: allChowsHand, robbingKong: true }),
+      ),
+    ).toEqual({
+      units: 4,
+      patterns: [
+        { pattern: ScoringPattern.ConcealedHand, units: 1 },
+        { pattern: ScoringPattern.NoFlowers, units: 1 },
+        { pattern: ScoringPattern.RobbingKong, units: 1 },
+        { pattern: ScoringPattern.AllChows, units: 1 },
+      ],
+    });
+    expect(
+      evaluateWin(
+        chart(Ruleset.Taiwan),
+        context({ concealedTileCodes: allChowsHand, robbingKong: true }),
+      )?.patterns,
+    ).toContainEqual({ pattern: ScoringPattern.RobbingKong, units: 1 });
   });
 
   it("counts the seat flower and a full set of flowers", () => {

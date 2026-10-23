@@ -1,14 +1,16 @@
 import { melds } from "@schema";
-import { and, asc, eq } from "void/db";
-import { executor, type DbExecutor } from "../db/executor";
+import { and, asc, eq } from "drizzle-orm";
+import { executor, type AppDatabase, type DbExecutor } from "../db/executor";
 
 export type MeldRow = typeof melds.$inferSelect;
 export type NewMeld = typeof melds.$inferInsert;
 export type MeldUpdate = Partial<Pick<MeldRow, "meldType">>;
 
 export class MeldsRepo {
+  constructor(readonly database: AppDatabase) {}
+
   async insert(values: NewMeld, tx?: DbExecutor): Promise<MeldRow> {
-    const [row] = await executor(tx).insert(melds).values(values).returning();
+    const [row] = await executor(tx, this.database).insert(melds).values(values).returning();
     if (row == null) {
       throw new Error("insert meld returned no row");
     }
@@ -16,12 +18,12 @@ export class MeldsRepo {
   }
 
   async findById(id: string, tx?: DbExecutor): Promise<MeldRow | undefined> {
-    const [row] = await executor(tx).select().from(melds).where(eq(melds.id, id));
+    const [row] = await executor(tx, this.database).select().from(melds).where(eq(melds.id, id));
     return row;
   }
 
   async findByRoundId(roundId: string, tx?: DbExecutor): Promise<MeldRow[]> {
-    return executor(tx)
+    return executor(tx, this.database)
       .select()
       .from(melds)
       .where(eq(melds.roundId, roundId))
@@ -33,7 +35,7 @@ export class MeldsRepo {
     seatIndex: number,
     tx?: DbExecutor,
   ): Promise<MeldRow[]> {
-    return executor(tx)
+    return executor(tx, this.database)
       .select()
       .from(melds)
       .where(and(eq(melds.roundId, roundId), eq(melds.seatIndex, seatIndex)))
@@ -41,7 +43,11 @@ export class MeldsRepo {
   }
 
   async update(id: string, values: MeldUpdate, tx?: DbExecutor): Promise<MeldRow | undefined> {
-    const [row] = await executor(tx).update(melds).set(values).where(eq(melds.id, id)).returning();
+    const [row] = await executor(tx, this.database)
+      .update(melds)
+      .set(values)
+      .where(eq(melds.id, id))
+      .returning();
     return row;
   }
 }

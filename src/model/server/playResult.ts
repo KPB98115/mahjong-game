@@ -92,6 +92,7 @@ export type DiscardAction = z.infer<typeof discardActionSchema>;
 export type ClaimAction = z.infer<typeof claimActionSchema>;
 export type JoinedPayload = z.infer<typeof joinedPayloadSchema>;
 export type SelfHandPayload = z.infer<typeof selfHandPayloadSchema>;
+export type SelfHandTile = SelfHandPayload["tiles"][number];
 export type DrewPayload = z.infer<typeof drewPayloadSchema>;
 export type PublicStatePayload = z.infer<typeof publicStatePayloadSchema>;
 export type DiscardedPayload = z.infer<typeof discardedPayloadSchema>;
