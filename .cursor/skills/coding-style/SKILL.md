@@ -42,6 +42,42 @@ Apply these standards in this repository unless the user overrides them for a sp
 - Put behavior, orchestration, and testable rules in **`*.ts`** files under `src/logic/…` so unit tests can import logic without mounting components.
 - **Repo classes have no business logic.** They only insert, find, update, and delete rows. Rules, validation, scoring, status/`phase`, and orchestration live in `*Logic` classes. Repos do not call logic, other repos, or Redis.
 - For interactive or read-only UI, use a **view model** or **model** under `src/model/…` to keep components thin.
+- **Logic returns results; it never emits.** `*Logic` returns an outcome (for example `PlayOutcome` with a list of emits). Socket handlers and HTTP routes deliver it. Write order is always **Postgres → Redis cache → broadcast**.
+
+## Dependency injection (shared server code)
+
+Code under `src/logic/server` is shared by the Void web app (Workers) and `socket-server` (Node). Keep it free of runtime-specific imports.
+
+- **Repos take the database in the constructor:** `constructor(readonly database: AppDatabase) {}` and run queries through `executor(tx, this.database)`. Import query operators from `drizzle-orm`, not `void/db`. Use `readonly`, not `private`: a `private` field makes the class nominal and breaks the object-literal fakes in tests.
+- Only the composition roots touch a runtime: `db/voidDatabase.ts` and `createGameLogic.ts` / `createAuthLogic.ts` for Void, `createSocketServer.ts` for Node (`drizzle({ client: pgPool, schema })`).
+- Transactions come from an injected `TransactionRunner`. Randomness (`GameRandom`), time (`now` / `Clock`), timers (`Scheduler`), and Redis are injected too, so tests control them.
+- **Redis goes through the `RedisCommands` type** (`get`, `setEx`, `del`, `publish`), with `workersRedis` for Workers and `nodeRedisCommands` for Node. Stores and caches are built on it (`createRedisClaimWindowStore`, `createRedisRoundCache`, `createGameRedis`). Parse every Redis value with Zod. Cache failures are swallowed (Postgres is the source of truth); state that play depends on, like claim answers, throws.
+
+## Concurrency
+
+- Every play transaction locks the game row first: `gamesRepo.lockById(gameId, tx)` (`SELECT ... FOR UPDATE`). Read and decide only after the lock.
+- State that must not be lost between concurrent actions (claim answers) is saved **inside** the locked transaction. Cleanup that can wait (clearing the window, refreshing the cache) runs after commit.
+
+## Socket server (`socket-server/`)
+
+- Imports shared code with `@app/*` (→ `src/*`) and `@schema` (→ `db/schema.ts`). Its own relative imports use the `.js` extension.
+- **One handler class per client event** in `socket-server/src/logic/server/handler/`, wired in `socketHandlers.ts`. A handler reads `userId`, Zod-parses the payload, calls `*Logic` through `PlayActions`, and emits the result. No repos, SQL, or tile rules.
+- Handlers depend on the narrow `GameServer` / `GameSocket` types in `gameSocket.ts`, not on Socket.IO classes, so tests can use fakes.
+- Built with esbuild into one CommonJS bundle; Docker builds from the repo root.
+
+## Tests
+
+- Write the test first (TDD), then implement.
+- Test through logic with in-memory fakes, not mocks of internals: `src/test/memoryGame.ts` (repos, transactions, row locks), `fakeAuth.ts`, `memoryRedisCommands.ts`, and `playWorld.ts` (a seated four-player table with a stacked wall). Socket tests use `socket-server/src/test/fakeSocketServer.ts` (fake server, sockets, scheduler).
+- A fake repo is an object literal with the same methods plus `database`; keep it in sync when a repo gains a method.
+
+## Static data
+
+- Rule data such as scoring charts lives as JSON in `src/static/` (for example `src/static/ruleset/hongKong.json`). Its keys are enum values (`ScoringPattern`), and it is parsed with a Zod schema in `src/model/server` before use.
+
+## Comments
+
+- Only write a comment for a constraint the code can't show. Don't narrate what the next line does.
 
 ## Vue SFC order (`*.vue`)
 
@@ -101,3 +137,6 @@ Redis **client** code lives under `src/logic/server` and Redis types/enums under
 - [ ] API request/response guarded with Zod; closed fields whitelisted with those enums; other domain validation in logic
 - [ ] Vue script blocks follow the hook order above
 - [ ] Files placed under the correct `src/…` directory
+- [ ] Shared server code has no `void/*` or Node-only imports; repos take an injected `AppDatabase`
+- [ ] Play transactions call `gamesRepo.lockById` first; logic returns emits instead of emitting
+- [ ] Tests written first, using the in-memory fakes; `npm run check`, `npm run typecheck`, and `npm run typecheck:socket` pass
