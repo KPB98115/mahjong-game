@@ -48,4 +48,24 @@ export class UserRepo {
     }
     return row;
   }
+
+  async upsertFigure(
+    userId: string,
+    name: string,
+    value: string,
+    tx?: DbExecutor,
+  ): Promise<UserFigureRow> {
+    const [row] = await executor(tx)
+      .insert(userFigures)
+      .values({ userId, name, value })
+      .onConflictDoUpdate({
+        target: [userFigures.userId, userFigures.name],
+        set: { value },
+      })
+      .returning();
+    if (row === undefined) {
+      throw new Error("upsert figure returned no row");
+    }
+    return row;
+  }
 }

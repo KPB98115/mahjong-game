@@ -4,6 +4,7 @@ import { executor, type DbExecutor } from "../db/executor";
 
 export type MeldRow = typeof melds.$inferSelect;
 export type NewMeld = typeof melds.$inferInsert;
+export type MeldUpdate = Partial<Pick<MeldRow, "meldType">>;
 
 export class MeldsRepo {
   async insert(values: NewMeld, tx?: DbExecutor): Promise<MeldRow> {
@@ -37,5 +38,10 @@ export class MeldsRepo {
       .from(melds)
       .where(and(eq(melds.roundId, roundId), eq(melds.seatIndex, seatIndex)))
       .orderBy(asc(melds.sortIndex));
+  }
+
+  async update(id: string, values: MeldUpdate, tx?: DbExecutor): Promise<MeldRow | undefined> {
+    const [row] = await executor(tx).update(melds).set(values).where(eq(melds.id, id)).returning();
+    return row;
   }
 }

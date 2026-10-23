@@ -534,7 +534,7 @@ Each file includes a `version` string (e.g. `2026-10-18`). At east-game create, 
 
 Logic (not the file) turns a winning hand into `round_scores.score_units` and `score_payments.amount`, using the JSON chart plus the rule columns on `game.games`.
 
-Do **not** implement these JSON files until scoring work starts. This is the storage decision only.
+Both files are written (pattern units, `limitUnits`, and `payout`). Hong Kong pays `basePoints × 2^min(fan, capUnits)`; Taiwan pays `base + tai × perUnit`. Self-draw: each of the other three pays that amount. Seven pairs and thirteen orphans only count where the chart lists them.
 
 ### `tile_code` (locked)
 

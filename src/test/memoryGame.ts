@@ -385,6 +385,14 @@ export function createMemoryGame(): MemoryGame {
         .filter((row) => row.roundId === roundId && row.seatIndex === seatIndex)
         .sort((left, right) => left.sortIndex - right.sortIndex);
     },
+    async update(meldId: string, values: Partial<MeldRow>) {
+      const row = state.melds.find((item) => item.id === meldId);
+      if (row == null) {
+        return undefined;
+      }
+      Object.assign(row, values);
+      return row;
+    },
   };
 
   const meldTilesRepo: MeldTilesRepo = {

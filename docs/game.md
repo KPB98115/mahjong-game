@@ -1,6 +1,6 @@
 # Game tables: repos and logic (planning)
 
-Not implemented. Table definitions: [`docs/database.md`](database.md). HTTP: [`docs/api.md`](api.md). Socket events: [`docs/socket.md`](socket.md). Auth layering: [`docs/auth.md`](auth.md). Enums / request whitelist: [`docs/types.md`](types.md).
+Implemented under `src/logic/server/game/` (socket handlers still pending). Table definitions: [`docs/database.md`](database.md). HTTP: [`docs/api.md`](api.md). Socket events: [`docs/socket.md`](socket.md). Auth layering: [`docs/auth.md`](auth.md). Enums / request whitelist: [`docs/types.md`](types.md).
 
 Same split as auth/user: **one repo class and one logic class per `game.*` table**.
 

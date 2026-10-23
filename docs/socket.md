@@ -100,7 +100,7 @@ Concealed kong / added kong: still `claim` with `kind: "kong"` while it is your 
 | `pong` | none | Reply to `ping` |
 | `joined` | `{ gameId, seatIndex }` | `joinGame` accepted |
 | `selfHand` | `{ tiles: { tileId, tileCode, sortIndex, isDrawn }[] }` | Full concealed hand (join, reconnect, after meld) |
-| `drew` | `{ tile: { tileId, tileCode, isDrawn: true }, wallCount, flower?: { tileCode } }` | Private draw. If `flower` is set, 补花 already applied and this `tile` is the replacement. |
+| `drew` | `{ tile: { tileId, tileCode, isDrawn: true }, wallCount, flowers: { tileCode }[] }` | Private draw. Each `flowers` entry was set aside by 补花 in this draw (several can chain); `tile` is the final replacement. |
 | `actionError` | `{ error }` | Same enum style as HTTP (`notYourTurn`, `invalidTile`, …) |
 
 ## Server → room (public)

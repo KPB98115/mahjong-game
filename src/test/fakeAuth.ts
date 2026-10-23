@@ -98,6 +98,7 @@ export type MemoryAuth = {
   users: Map<string, FakeUser>;
   sessions: Map<string, FakeSession>;
   seatedUserIds: Set<string>;
+  figures: FakeFigure[];
   authRepo: AuthRepo;
   userRepo: UserRepo;
   seatsRepo: SeatsRepo;
@@ -110,6 +111,7 @@ export function createMemoryAuth(): MemoryAuth {
   const sessions = new Map<string, FakeSession>();
   const seatedUserIds = new Set<string>();
   const attributes: FakeAttribute[] = [];
+  const figures: FakeFigure[] = [];
   let userCount = 0;
   let sessionCount = 0;
 
@@ -168,8 +170,8 @@ export function createMemoryAuth(): MemoryAuth {
     async listAttributes(userId) {
       return attributes.filter((row) => row.userId === userId);
     },
-    async listFigures() {
-      return [];
+    async listFigures(userId) {
+      return figures.filter((row) => row.userId === userId);
     },
     async upsertAttribute(userId, name, value) {
       const existing = attributes.find((row) => row.userId === userId && row.name === name);
@@ -179,6 +181,16 @@ export function createMemoryAuth(): MemoryAuth {
       }
       const row: FakeAttribute = { id: `attr-${attributes.length + 1}`, userId, name, value };
       attributes.push(row);
+      return row;
+    },
+    async upsertFigure(userId, name, value) {
+      const existing = figures.find((row) => row.userId === userId && row.name === name);
+      if (existing != null) {
+        existing.value = value;
+        return existing;
+      }
+      const row: FakeFigure = { id: `figure-${figures.length + 1}`, userId, name, value };
+      figures.push(row);
       return row;
     },
   };
@@ -229,6 +241,7 @@ export function createMemoryAuth(): MemoryAuth {
     users,
     sessions,
     seatedUserIds,
+    figures,
     authRepo,
     userRepo,
     seatsRepo,
@@ -329,6 +342,9 @@ export function createUserRepoFake(initial?: {
       const row: FakeAttribute = { id: `attr-${upserts.length}`, userId, name, value };
       attributes.push(row);
       return row;
+    },
+    async upsertFigure() {
+      throw new Error("upsertFigure is not used by UserLogic");
     },
   };
   return {

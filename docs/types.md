@@ -29,8 +29,13 @@ Column enums used by `db/schema.ts` are written. The other files are not.
 | `src/types/server/roundResultType.ts` | `RoundResultType` | written |
 | `src/types/server/winKind.ts` | `WinKind` | written |
 | `src/types/server/meldType.ts` | `MeldType` | written |
-| `src/types/server/socketEvent.ts` | `SocketEvent` | not written |
-| `src/types/server/socketError.ts` | `SocketError` | not written |
+| `src/types/server/socketEvent.ts` | `SocketEvent` | written |
+| `src/types/server/socketError.ts` | `SocketError` | written |
+| `src/types/server/emitTarget.ts` | `EmitTarget` | written |
+| `src/types/server/claimAnswerKind.ts` | `ClaimAnswerKind` | written |
+| `src/types/server/tile.ts` | `TileKind`, `TileSuit`, `WindTile`, `DragonTile`, `FlowerTile`, `SeasonTile` | written |
+| `src/types/server/scoringPattern.ts` | `ScoringPattern` | written |
+| `src/types/server/payoutKind.ts` | `PayoutKind` | written |
 
 ---
 

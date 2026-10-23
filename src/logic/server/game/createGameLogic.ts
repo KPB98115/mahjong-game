@@ -1,10 +1,12 @@
 import { runTransaction } from "../db/executor";
 import { deleteGameCache, publishGameAborted } from "../redis/gameChannel";
 import { UserRepo } from "../user/userRepo";
+import { createMemoryClaimWindowStore } from "./claimWindowStore";
 import { DiscardTilesRepo } from "./discardTilesRepo";
 import { FlowerTilesRepo } from "./flowerTilesRepo";
+import { createGameLogics, type GameLogicOptions } from "./gameLogics";
 import { defaultGameRandom, type GameRandom } from "./gameRandom";
-import { GamesLogic, type GameRedis } from "./gamesLogic";
+import { type GamesLogic, type GameRedis } from "./gamesLogic";
 import { GamesRepo } from "./gamesRepo";
 import { HandsRepo } from "./handsRepo";
 import { HandTilesRepo } from "./handTilesRepo";
@@ -12,12 +14,14 @@ import { type SnapshotRepos } from "./loadGameSnapshot";
 import { MeldTilesRepo } from "./meldTilesRepo";
 import { MeldsRepo } from "./meldsRepo";
 import { RoundScoresRepo } from "./roundScoresRepo";
-import { RoundsLogic } from "./roundsLogic";
+import { type RoundsLogic } from "./roundsLogic";
 import { RoundsRepo } from "./roundsRepo";
 import { ScorePaymentsRepo } from "./scorePaymentsRepo";
-import { SeatsLogic } from "./seatsLogic";
+import { type SeatsLogic } from "./seatsLogic";
 import { SeatsRepo } from "./seatsRepo";
 import { WallTilesRepo } from "./wallTilesRepo";
+
+const processClaimWindowStore = createMemoryClaimWindowStore();
 
 export function createSnapshotRepos(): SnapshotRepos {
   return {
@@ -37,34 +41,11 @@ export function createSnapshotRepos(): SnapshotRepos {
   };
 }
 
-export function createRoundsLogic(
-  repos: SnapshotRepos,
-  random: GameRandom = defaultGameRandom(),
-): RoundsLogic {
-  return new RoundsLogic(
-    repos.gamesRepo,
-    repos.roundsRepo,
-    repos.handsRepo,
-    repos.handTilesRepo,
-    repos.wallTilesRepo,
-    repos.flowerTilesRepo,
-    repos.seatsRepo,
-    random,
-  );
-}
-
 export function createSeatsLogic(
   repos = createSnapshotRepos(),
   random: GameRandom = defaultGameRandom(),
 ): SeatsLogic {
-  return new SeatsLogic(
-    repos.seatsRepo,
-    repos.gamesRepo,
-    createRoundsLogic(repos, random),
-    repos,
-    runTransaction,
-    random,
-  );
+  return createGameLogics(defaultOptions(repos, random)).seatsLogic;
 }
 
 export function createGamesLogic(
@@ -75,14 +56,22 @@ export function createGamesLogic(
     deleteCache: deleteGameCache,
   },
 ): GamesLogic {
-  const roundsLogic = createRoundsLogic(repos, random);
-  const seatsLogic = new SeatsLogic(
-    repos.seatsRepo,
-    repos.gamesRepo,
-    roundsLogic,
+  return createGameLogics({ ...defaultOptions(repos, random), redis }).gamesLogic;
+}
+
+export function createRoundsLogic(
+  repos = createSnapshotRepos(),
+  random: GameRandom = defaultGameRandom(),
+): RoundsLogic {
+  return createGameLogics(defaultOptions(repos, random)).roundsLogic;
+}
+
+function defaultOptions(repos: SnapshotRepos, random: GameRandom): GameLogicOptions {
+  return {
     repos,
     runTransaction,
     random,
-  );
-  return new GamesLogic(repos, roundsLogic, seatsLogic, runTransaction, random, redis);
+    redis: { publishAborted: publishGameAborted, deleteCache: deleteGameCache },
+    claimWindowStore: processClaimWindowStore,
+  };
 }
