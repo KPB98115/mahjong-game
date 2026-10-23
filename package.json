@@ -25,7 +25,8 @@
     "typecheck:socket": "tsc --noEmit --project socket-server/tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "npm run lint && npm run fmt:check && npm test"
+    "check": "npm run lint && npm run fmt:check && npm test",
+    "bot:play": "tsx --tsconfig scripts/tsconfig.json scripts/playBotHand.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.4",
@@ -36,6 +37,7 @@
   },
   "devDependencies": {
     "@void/vue": "1.1.11",
+    "tsx": "^4.19.3",
     "typescript": "^7.0.2",
     "vite": "npm:@voidzero-dev/vite-plus-core@^1.2.0",
     "vite-plus": "^1.2.0",

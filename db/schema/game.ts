@@ -11,6 +11,7 @@ import {
   unique,
   uuid,
 } from "void/schema-pg";
+import { BotDifficulty } from "../../src/types/server/botDifficulty";
 import { ClaimWindowMs } from "../../src/types/server/claimWindowMs";
 import { DiscardWinPayer } from "../../src/types/server/discardWinPayer";
 import { GameStatus } from "../../src/types/server/gameStatus";
@@ -26,6 +27,7 @@ import { sqlTextEnum } from "../sqlEnum";
 import { timestamptz, uuidPrimaryKey } from "./columns";
 import { users } from "./profile";
 
+const botDifficultyEnum = sqlTextEnum(BotDifficulty);
 const ruleset = sqlTextEnum(Ruleset);
 const gameStatus = sqlTextEnum(GameStatus);
 const prevailingWind = sqlTextEnum(PrevailingWind);
@@ -87,6 +89,7 @@ export const seats = gameSchema.table(
       .references(() => users.uuid, { onDelete: "restrict" }),
     runningScore: numeric("running_score").notNull(),
     nextWindAgreed: boolean("next_wind_agreed").notNull().default(false),
+    botDifficulty: botDifficultyEnum("bot_difficulty"),
     createdAt: timestamptz("created_at"),
   },
   (table) => [unique("seats_game_id_seat_index_key").on(table.gameId, table.seatIndex)],

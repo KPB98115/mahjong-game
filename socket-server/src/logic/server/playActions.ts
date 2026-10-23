@@ -18,6 +18,7 @@ export class PlayActions {
     private emitter: PlayEmitter,
     private coordinator: ClaimWindowCoordinator,
     readonly clock: Clock,
+    private advanceBots: (gameId: string) => void = () => undefined,
   ) {}
 
   read<Schema extends z.ZodType>(
@@ -52,5 +53,6 @@ export class PlayActions {
     }
     this.emitter.deliver(outcome.result);
     this.coordinator.sync(outcome.result);
+    this.advanceBots(outcome.result.gameId);
   }
 }

@@ -206,6 +206,7 @@ export function createMemoryAuth(): MemoryAuth {
         userId: values.userId,
         runningScore: values.runningScore,
         nextWindAgreed: values.nextWindAgreed ?? false,
+        botDifficulty: values.botDifficulty ?? null,
         createdAt: values.createdAt ?? new Date(),
       };
       seatedUserIds.add(values.userId);
@@ -231,6 +232,7 @@ export function createMemoryAuth(): MemoryAuth {
         userId,
         runningScore: "0",
         nextWindAgreed: false,
+        botDifficulty: null,
         createdAt: new Date(),
       };
       return [row];
