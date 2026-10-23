@@ -23,13 +23,14 @@ Apply these standards in this repository unless the user overrides them for a sp
 ## TypeScript types
 
 - Prefer **`type`** over **`interface`** for new data shapes.
+- Do **not** use **`any`** or **`unknown`**. Give each value a concrete type, a generic, or a union. Parse JSON with Zod into that type instead of storing it as `unknown`.
 - Use **`enum`** for static sets of values, **especially string values**, instead of `const` object maps. Server enums live under **`src/types/server`**. Use them as the **whitelist** for client HTTP and socket fields (Zod `z.enum(…)` in `src/model/server`; logic/handlers call parse). Do not re-check membership in `*Logic` after a successful parse.
 
 ## Zod
 
 - **Always guard API requests and responses with Zod** (incoming body/query on the server; JSON from APIs on the client). Schemas live in **`src/model/server`**; `*Logic` / socket handlers / `ApiClient` call parse before use.
-- Use **Zod to guard and parse data types** at other boundaries too (unknown JSON, env parsing).
-- Do **not** use Zod as the primary place for **business/value validation** (rules, limits, domain constraints). Put that validation in **logic** functions; Zod should narrow unknown input to typed structures, not encode product rules.
+- Use **Zod to guard and parse data types** at other boundaries too (JSON bodies, env parsing).
+- Do **not** use Zod as the primary place for **business/value validation** (rules, limits, domain constraints). Put that validation in **logic** functions; Zod should narrow input to a concrete type, not encode product rules.
 
 ## Regex
 
@@ -96,6 +97,7 @@ Redis **client** code lives under `src/logic/server` and Redis types/enums under
 
 - [ ] Logic lives in `src/logic/…`, not bloated in `.vue`
 - [ ] camelCase naming; enums for string constants under `src/types/server`
+- [ ] No `any` or `unknown`; values use a concrete type, generic, or union
 - [ ] API request/response guarded with Zod; closed fields whitelisted with those enums; other domain validation in logic
 - [ ] Vue script blocks follow the hook order above
 - [ ] Files placed under the correct `src/…` directory

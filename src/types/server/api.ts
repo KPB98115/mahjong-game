@@ -33,8 +33,3 @@ export type ApiSuccess<T> = {
   status: ApiStatus.Success;
   data: T;
 };
-
-export type ApiFailure = {
-  status: ApiStatus.Failed;
-  error: ApiError;
-};

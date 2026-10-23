@@ -1,6 +1,7 @@
+import { db } from "void/db";
 import { AuthLogic, type AuthRedis, type AuthTransaction } from "../logic/server/auth/authLogic";
 import { type AuthRepo } from "../logic/server/auth/authRepo";
-import { type SeatsRepo } from "../logic/server/game/seatsRepo";
+import { type SeatRow, type SeatsRepo } from "../logic/server/game/seatsRepo";
 import { type UserRepo } from "../logic/server/user/userRepo";
 import { type SessionCacheValue } from "../model/server/sessionCache";
 
@@ -108,87 +109,132 @@ export function createMemoryAuth(): MemoryAuth {
   const users = new Map<string, FakeUser>();
   const sessions = new Map<string, FakeSession>();
   const seatedUserIds = new Set<string>();
+  const attributes: FakeAttribute[] = [];
   let userCount = 0;
   let sessionCount = 0;
 
+  const authRepo: AuthRepo = {
+    async insert(values) {
+      insertOrder.push("session");
+      sessionCount += 1;
+      const row: FakeSession = {
+        id: `session-${sessionCount}`,
+        userId: values.userId,
+        tokenHash: values.tokenHash,
+        isExpired: values.isExpired ?? false,
+        createdAt: values.createdAt ?? new Date(),
+        updatedAt: values.updatedAt ?? new Date(),
+        lastSeenAt: values.lastSeenAt ?? new Date(),
+      };
+      sessions.set(row.id, row);
+      return row;
+    },
+    async findById(id) {
+      return sessions.get(id);
+    },
+    async findByTokenHash(tokenHash) {
+      for (const row of sessions.values()) {
+        if (row.tokenHash === tokenHash) {
+          return row;
+        }
+      }
+      return undefined;
+    },
+    async update(id, values) {
+      const row = sessions.get(id);
+      if (row == null) {
+        return undefined;
+      }
+      const updated: FakeSession = { ...row, ...values };
+      sessions.set(id, updated);
+      return updated;
+    },
+  };
+  const userRepo: UserRepo = {
+    async insert(values = {}) {
+      insertOrder.push("user");
+      userCount += 1;
+      const row: FakeUser = {
+        uuid: `user-${userCount}`,
+        createdAt: values.createdAt ?? new Date(),
+        updatedAt: values.updatedAt ?? new Date(),
+      };
+      users.set(row.uuid, row);
+      return row;
+    },
+    async findByUuid(uuid) {
+      return users.get(uuid);
+    },
+    async listAttributes(userId) {
+      return attributes.filter((row) => row.userId === userId);
+    },
+    async listFigures() {
+      return [];
+    },
+    async upsertAttribute(userId, name, value) {
+      const existing = attributes.find((row) => row.userId === userId && row.name === name);
+      if (existing != null) {
+        existing.value = value;
+        return existing;
+      }
+      const row: FakeAttribute = { id: `attr-${attributes.length + 1}`, userId, name, value };
+      attributes.push(row);
+      return row;
+    },
+  };
+  const seatsRepo: SeatsRepo = {
+    async insert(values) {
+      const row: SeatRow = {
+        id: values.id ?? `seat-${values.userId}`,
+        gameId: values.gameId,
+        seatIndex: values.seatIndex,
+        userId: values.userId,
+        runningScore: values.runningScore,
+        nextWindAgreed: values.nextWindAgreed ?? false,
+        createdAt: values.createdAt ?? new Date(),
+      };
+      seatedUserIds.add(values.userId);
+      return row;
+    },
+    async findById() {
+      return undefined;
+    },
+    async findByGameId() {
+      return [];
+    },
+    async findByGameIdAndUserId() {
+      return undefined;
+    },
+    async findByUserId(userId) {
+      if (!seatedUserIds.has(userId)) {
+        return [];
+      }
+      const row: SeatRow = {
+        id: `seat-${userId}`,
+        gameId: `game-${userId}`,
+        seatIndex: 0,
+        userId,
+        runningScore: "0",
+        nextWindAgreed: false,
+        createdAt: new Date(),
+      };
+      return [row];
+    },
+    async update() {
+      return undefined;
+    },
+  };
   const memory: MemoryAuth = {
     insertOrder,
     users,
     sessions,
     seatedUserIds,
-    authRepo: {
-      async insert(values) {
-        insertOrder.push("session");
-        sessionCount += 1;
-        const row: FakeSession = {
-          id: `session-${sessionCount}`,
-          userId: values.userId,
-          tokenHash: values.tokenHash,
-          isExpired: values.isExpired ?? false,
-          createdAt: values.createdAt ?? new Date(),
-          updatedAt: values.updatedAt ?? new Date(),
-          lastSeenAt: values.lastSeenAt ?? new Date(),
-        };
-        sessions.set(row.id, row);
-        return row;
-      },
-      async findById(id) {
-        return sessions.get(id);
-      },
-      async findByTokenHash(tokenHash) {
-        for (const row of sessions.values()) {
-          if (row.tokenHash === tokenHash) {
-            return row;
-          }
-        }
-        return undefined;
-      },
-      async update(id, values) {
-        const row = sessions.get(id);
-        if (row === undefined) {
-          return undefined;
-        }
-        const updated: FakeSession = { ...row, ...values };
-        sessions.set(id, updated);
-        return updated;
-      },
-    } as AuthRepo,
-    userRepo: {
-      async insert(values = {}) {
-        insertOrder.push("user");
-        userCount += 1;
-        const row: FakeUser = {
-          uuid: `user-${userCount}`,
-          createdAt: values.createdAt ?? new Date(),
-          updatedAt: values.updatedAt ?? new Date(),
-        };
-        users.set(row.uuid, row);
-        return row;
-      },
-      async findByUuid(uuid) {
-        return users.get(uuid);
-      },
-      async listAttributes() {
-        return [];
-      },
-      async listFigures() {
-        return [];
-      },
-      async upsertAttribute() {
-        throw new Error("upsertAttribute is owned by UserLogic tests");
-      },
-    } as UserRepo,
-    seatsRepo: {
-      async findByUserId(userId) {
-        if (!seatedUserIds.has(userId)) {
-          return [];
-        }
-        return [{ id: `seat-${userId}`, userId }] as Awaited<ReturnType<SeatsRepo["findByUserId"]>>;
-      },
-    } as SeatsRepo,
+    authRepo,
+    userRepo,
+    seatsRepo,
     async runTransaction(callback) {
       insertOrder.push("tx");
-      return callback({} as never);
+      return callback(db);
     },
   };
   return memory;
@@ -260,34 +306,35 @@ export function createUserRepoFake(initial?: {
   const attributes = initial?.attributes ?? [];
   const figures = initial?.figures ?? [];
   const upserts: { userId: string; name: string; value: string }[] = [];
+  const repo: UserRepo = {
+    async insert() {
+      throw new Error("insert is not used by UserLogic");
+    },
+    async findByUuid() {
+      return undefined;
+    },
+    async listAttributes() {
+      return attributes;
+    },
+    async listFigures() {
+      return figures;
+    },
+    async upsertAttribute(userId, name, value) {
+      upserts.push({ userId, name, value });
+      const existing = attributes.find((row) => row.userId === userId && row.name === name);
+      if (existing != null) {
+        existing.value = value;
+        return existing;
+      }
+      const row: FakeAttribute = { id: `attr-${upserts.length}`, userId, name, value };
+      attributes.push(row);
+      return row;
+    },
+  };
   return {
     upserts,
     attributes,
     figures,
-    repo: {
-      async insert() {
-        throw new Error("insert is not used by UserLogic");
-      },
-      async findByUuid() {
-        return undefined;
-      },
-      async listAttributes() {
-        return attributes;
-      },
-      async listFigures() {
-        return figures;
-      },
-      async upsertAttribute(userId, name, value) {
-        upserts.push({ userId, name, value });
-        const existing = attributes.find((row) => row.userId === userId && row.name === name);
-        if (existing !== undefined) {
-          existing.value = value;
-          return existing;
-        }
-        const row: FakeAttribute = { id: `attr-${upserts.length}`, userId, name, value };
-        attributes.push(row);
-        return row;
-      },
-    } as UserRepo,
+    repo,
   };
 }

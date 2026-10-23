@@ -1,10 +1,13 @@
+import {
+  actionErrorSchema,
+  resolveSessionOkSchema,
+  socketTicketSchema,
+  type ResolveSessionOk,
+} from "../../../model/server/actionResult";
 import { type SessionCacheValue } from "../../../model/server/sessionCache";
 import { ApiError, HttpStatus } from "../../../types/server/api";
 import {
-  isResolveSessionErr,
-  isSocketTicketErr,
   type ResolveSessionInput,
-  type ResolveSessionOk,
   type ResolveSessionResult,
   type SocketTicketResult,
 } from "../../../types/server/auth";
@@ -37,13 +40,13 @@ export class AuthLogic {
 
   async resolveSession(input: ResolveSessionInput): Promise<ResolveSessionResult> {
     const rawToken = input.rawToken;
-    if (rawToken === undefined) {
+    if (rawToken == null) {
       return this.missingOrDead(input.createIfMissing, input.now);
     }
     const tokenHash = await this.hashToken(rawToken);
     const cached = await this.readSessionCache(tokenHash);
     const loaded = await this.loadSessionAndUser(tokenHash, cached);
-    if (loaded === undefined) {
+    if (loaded == null) {
       return this.missingOrDead(input.createIfMissing, input.now, tokenHash);
     }
     const { session, user } = loaded;
@@ -67,35 +70,37 @@ export class AuthLogic {
       { userId: user.uuid, sessionId: session.id },
       ttlSeconds,
     );
-    return {
+    return resolveSessionOkSchema.parse({
       userId: user.uuid,
       sessionId: session.id,
       rawToken,
       refreshCookie: pastWindowSeated,
       cookieMaxAgeSeconds: ttlSeconds,
-    };
+    });
   }
 
   async mintSocketTicket(userId: string): Promise<SocketTicketResult> {
     const ticket = this.randomToken();
     const stored = await this.writeSocketTicket(ticket, userId);
     if (!stored) {
-      return { error: ApiError.RedisUnavailable, status: HttpStatus.ServiceUnavailable };
+      return actionErrorSchema.parse({
+        error: ApiError.RedisUnavailable,
+        status: HttpStatus.ServiceUnavailable,
+      });
     }
-    return { ticket };
+    return socketTicketSchema.parse({ ticket });
   }
 
   private async loadSessionAndUser(
     tokenHash: string,
     cached: SessionCacheValue | undefined,
   ): Promise<{ session: SessionRow; user: UserRow } | undefined> {
-    if (cached !== undefined) {
+    if (cached != null) {
       const session = await this.authRepo.findById(cached.sessionId);
-      const user =
-        session === undefined ? undefined : await this.userRepo.findByUuid(session.userId);
+      const user = session == null ? undefined : await this.userRepo.findByUuid(session.userId);
       if (
-        session === undefined ||
-        user === undefined ||
+        session == null ||
+        user == null ||
         session.tokenHash !== tokenHash ||
         session.userId !== cached.userId ||
         user.uuid !== cached.userId
@@ -105,8 +110,8 @@ export class AuthLogic {
       return { session, user };
     }
     const session = await this.authRepo.findByTokenHash(tokenHash);
-    const user = session === undefined ? undefined : await this.userRepo.findByUuid(session.userId);
-    if (session === undefined || user === undefined) {
+    const user = session == null ? undefined : await this.userRepo.findByUuid(session.userId);
+    if (session == null || user == null) {
       return undefined;
     }
     return { session, user };
@@ -117,11 +122,14 @@ export class AuthLogic {
     now: Date,
     tokenHash?: string,
   ): Promise<ResolveSessionResult> {
-    if (tokenHash !== undefined) {
+    if (tokenHash != null) {
       await this.dropSessionCache(tokenHash);
     }
     if (!createIfMissing) {
-      return { error: ApiError.Unauthorized, status: HttpStatus.Unauthorized };
+      return actionErrorSchema.parse({
+        error: ApiError.Unauthorized,
+        status: HttpStatus.Unauthorized,
+      });
     }
     return this.createPlayer(now);
   }
@@ -150,13 +158,13 @@ export class AuthLogic {
       { userId: created.user.uuid, sessionId: created.session.id },
       ttlSeconds,
     );
-    return {
+    return resolveSessionOkSchema.parse({
       userId: created.user.uuid,
       sessionId: created.session.id,
       rawToken,
       refreshCookie: true,
       cookieMaxAgeSeconds: ttlSeconds,
-    };
+    });
   }
 
   private async hashToken(rawToken: string): Promise<string> {
@@ -223,8 +231,6 @@ export class AuthLogic {
     }
   }
 }
-
-export { isResolveSessionErr, isSocketTicketErr };
 
 function bytesToHex(bytes: Uint8Array): string {
   let hex = "";

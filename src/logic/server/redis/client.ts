@@ -230,6 +230,16 @@ export async function redisSetEx(key: string, value: string, ttlSeconds: number)
   }
 }
 
-export async function redisDel(key: string): Promise<void> {
-  await withTimeout(runCommand(["DEL", key]), redisTimeoutMs);
+export async function redisDel(...keys: string[]): Promise<void> {
+  if (keys.length === 0) {
+    return;
+  }
+  await withTimeout(runCommand(["DEL", ...keys]), redisTimeoutMs);
+}
+
+export async function redisPublish(channel: string, message: string): Promise<void> {
+  const reply = await withTimeout(runCommand(["PUBLISH", channel, message]), redisTimeoutMs);
+  if (typeof reply !== "number") {
+    throw new Error("Unexpected Redis PUBLISH reply");
+  }
 }

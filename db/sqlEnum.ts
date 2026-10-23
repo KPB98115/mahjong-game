@@ -15,15 +15,21 @@ function toSqlText(value: string): string {
   return sqlText;
 }
 
+function isEnumMember<T extends StringEnum>(enumObject: T, value: string): value is T[keyof T] {
+  return Object.values(enumObject).includes(value);
+}
+
 export function sqlTextEnum<T extends StringEnum>(enumObject: T) {
   const toSql = new Map<T[keyof T], string>();
   const fromSql = new Map<string, T[keyof T]>();
 
   for (const value of Object.values(enumObject)) {
-    const enumValue = value as T[keyof T];
-    const sqlText = toSqlText(enumValue);
-    toSql.set(enumValue, sqlText);
-    fromSql.set(sqlText, enumValue);
+    if (!isEnumMember(enumObject, value)) {
+      continue;
+    }
+    const sqlText = toSqlText(value);
+    toSql.set(value, sqlText);
+    fromSql.set(sqlText, value);
   }
 
   return customType<{ data: T[keyof T]; driverData: string }>({
