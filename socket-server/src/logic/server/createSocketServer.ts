@@ -93,8 +93,9 @@ export async function startSocketServer(config: ServerConfig): Promise<void> {
 
   const database = drizzle({ client: new Pool({ connectionString: config.databaseUrl }), schema });
   const redis = nodeRedisCommands(pubClient);
+  const repos = createSnapshotRepos(database);
   const { roundsLogic } = createGameLogics({
-    repos: createSnapshotRepos(database),
+    repos,
     runTransaction: transactionRunner(database),
     random: defaultGameRandom(),
     redis: createGameRedis(redis),
@@ -112,6 +113,7 @@ export async function startSocketServer(config: ServerConfig): Promise<void> {
 
   const handlers = createSocketHandlers({
     roundsLogic,
+    repos,
     server: gameServerOf(io),
     localServer: gameServerOf(io.local),
     scheduler: nodeScheduler,

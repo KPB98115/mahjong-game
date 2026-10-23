@@ -1,4 +1,6 @@
+import { type SnapshotRepos } from "@app/logic/server/game/loadGameSnapshot";
 import { type RoundsLogic } from "@app/logic/server/game/roundsLogic";
+import { BotDriver } from "./botDriver.js";
 import { ClaimWindowCoordinator } from "./claimWindowCoordinator.js";
 import { GameActionQueue } from "./gameActionQueue.js";
 import { type Clock, type GameServer, type Scheduler } from "./gameSocket.js";
@@ -17,6 +19,7 @@ import { PlayEmitter } from "./playEmitter.js";
 
 export type SocketHandlerDeps = {
   roundsLogic: RoundsLogic;
+  repos: SnapshotRepos;
   server: GameServer;
   localServer: GameServer;
   scheduler: Scheduler;
@@ -39,13 +42,21 @@ export type SocketHandlers = {
 };
 
 export function createSocketHandlers(deps: SocketHandlerDeps): SocketHandlers {
-  const { roundsLogic, server, clock } = deps;
+  const { roundsLogic, repos, server, clock } = deps;
   const queue = new GameActionQueue();
   const emitter = new PlayEmitter(server);
+  // advanceBots and actions are forward-referenced via closures; assign after construction.
+  let advanceBots: (gameId: string) => void = () => undefined;
   const coordinator: ClaimWindowCoordinator = new ClaimWindowCoordinator(deps.scheduler, (gameId) =>
     actions.perform(undefined, gameId, () => roundsLogic.passUnanswered({ gameId, now: clock() })),
   );
-  const actions = new PlayActions(queue, emitter, coordinator, clock);
+  const actions = new PlayActions(queue, emitter, coordinator, clock, (gameId) =>
+    advanceBots(gameId),
+  );
+  const botDriver = new BotDriver(repos, roundsLogic, actions, clock);
+  advanceBots = (gameId: string): void => {
+    void botDriver.advance(gameId).catch((e) => console.error(e));
+  };
   const joinGame = new JoinGameHandler(roundsLogic, actions, emitter, coordinator);
   return {
     auth: new SocketAuthHandler(deps.takeTicket),
@@ -63,6 +74,7 @@ export function createSocketHandlers(deps: SocketHandlerDeps): SocketHandlers {
       new PlayEmitter(deps.localServer),
       coordinator,
       joinGame,
+      advanceBots,
     ),
     coordinator,
   };

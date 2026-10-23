@@ -9,11 +9,7 @@
  * All state is in-memory (no Postgres or Redis needed).
  */
 
-import {
-  createPlayWorld,
-  playNow,
-  type PlayWorld,
-} from "../src/test/playWorld";
+import { createPlayWorld, playNow, type PlayWorld } from "../src/test/playWorld";
 import {
   chooseTurnAction,
   chooseClaimAction,

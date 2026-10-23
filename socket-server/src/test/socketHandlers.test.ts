@@ -32,6 +32,7 @@ async function createSocketWorld(
   const tickets = new Map<string, string>();
   const handlers = createSocketHandlers({
     roundsLogic: play.roundsLogic,
+    repos: play.repos,
     server: fake.server,
     localServer: fake.server,
     scheduler: timers.scheduler,

@@ -203,6 +203,7 @@ export function createMemoryGame(): MemoryGame {
         userId: values.userId,
         runningScore: values.runningScore,
         nextWindAgreed: values.nextWindAgreed ?? false,
+        botDifficulty: values.botDifficulty ?? null,
         createdAt: values.createdAt ?? new Date(),
       };
       state.seats.push(row);

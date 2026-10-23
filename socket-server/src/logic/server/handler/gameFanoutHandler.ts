@@ -18,6 +18,7 @@ export class GameFanoutHandler {
     private emitter: PlayEmitter,
     private coordinator: ClaimWindowCoordinator,
     private joinGame: JoinGameHandler,
+    private advanceBots: (gameId: string) => void = () => undefined,
   ) {}
 
   async handle(raw: string): Promise<void> {
@@ -62,6 +63,7 @@ export class GameFanoutHandler {
       publicStateSent ||= emits.some((emit) => emit.event === SocketEvent.PublicState);
       this.deliver(gameId, emits);
     }
+    this.advanceBots(gameId);
   }
 
   private async moveToNextWind(gameId: string, nextGameId: string): Promise<void> {

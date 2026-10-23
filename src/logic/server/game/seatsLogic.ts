@@ -1,6 +1,8 @@
+import { addBotBodySchema } from "../../../model/server/addBotBody";
 import { joinGameBodySchema } from "../../../model/server/joinGameBody";
 import { currentGameSchema } from "../../../model/server/profileResponse";
 import { ApiError } from "../../../types/server/api";
+import { type BotDifficulty } from "../../../types/server/botDifficulty";
 import { type JsonValue } from "../../../types/server/jsonValue";
 import { GameStatus } from "../../../types/server/gameStatus";
 import { type CurrentGame } from "../../../model/server/profileResponse";
@@ -115,6 +117,82 @@ export class SeatsLogic implements CurrentGameSource {
       }
       if (constraint != null && constraint.includes("seat_index")) {
         return apiFailure(ApiError.GameFull);
+      }
+      throw error;
+    }
+  }
+
+  async addBot(
+    hostUserId: string,
+    gameId: string,
+    body: JsonValue,
+    now: Date,
+  ): Promise<SnapshotResult> {
+    const parsed = addBotBodySchema.safeParse(body);
+    if (!parsed.success) {
+      return apiFailure(ApiError.InvalidBody);
+    }
+    const difficulty: BotDifficulty = parsed.data.difficulty;
+    try {
+      const resolvedGameId = await this.runTransaction(async (tx) => {
+        const game = await this.gamesRepo.findById(gameId, tx);
+        if (game == null) {
+          throw new GameRuleFailure(apiFailure(ApiError.GameNotFound));
+        }
+        if (game.status !== GameStatus.Waiting) {
+          throw new GameRuleFailure(apiFailure(ApiError.GameNotWaiting));
+        }
+        // Requester must be seated in this game.
+        const requester = await this.seatsRepo.findByGameIdAndUserId(game.id, hostUserId, tx);
+        if (requester == null) {
+          throw new GameRuleFailure(apiFailure(ApiError.NotSeated));
+        }
+        const seated = await this.seatsRepo.findByGameId(game.id, tx);
+        if (seated.length >= seatCount) {
+          throw new GameRuleFailure(apiFailure(ApiError.GameFull));
+        }
+        // Create a placeholder user for the bot.
+        const botUser = await this.repos.userRepo.insert({}, tx);
+        await this.repos.userRepo.upsertAttribute(
+          botUser.uuid,
+          "displayName",
+          `Bot (${difficulty})`,
+          tx,
+        );
+        await this.seatsRepo.insert(
+          {
+            gameId: game.id,
+            seatIndex: seated.length,
+            userId: botUser.uuid,
+            runningScore: game.startingScore,
+            nextWindAgreed: false,
+            botDifficulty: difficulty,
+          },
+          tx,
+        );
+        if (seated.length + 1 === seatCount) {
+          await this.roundsLogic.start({
+            game,
+            dealerSeatIndex: this.random.dealerSeatIndex(),
+            now,
+            tx,
+          });
+        }
+        return game.id;
+      });
+      try {
+        await this.redis.publishChanged(resolvedGameId);
+      } catch {
+        // Sockets reconcile from HTTP GET after reconnect.
+      }
+      return loadGameSnapshot(this.repos, resolvedGameId, hostUserId);
+    } catch (error) {
+      if (typeof error !== "object" || error == null) {
+        throw error;
+      }
+      const failure = readGameRuleFailure(error);
+      if (failure != null) {
+        return failure;
       }
       throw error;
     }

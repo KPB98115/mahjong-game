@@ -149,7 +149,9 @@ function chooseDiscardMedium(hand: HandTileRow[]): string {
   }
 
   // Otherwise prefer discarding an isolated honor tile.
-  const isolatedHonor = hand.find((t) => (counts.get(t.tileCode) ?? 0) === 1 && isHonorCode(t.tileCode));
+  const isolatedHonor = hand.find(
+    (t) => (counts.get(t.tileCode) ?? 0) === 1 && isHonorCode(t.tileCode),
+  );
   if (isolatedHonor != null) {
     return isolatedHonor.id;
   }

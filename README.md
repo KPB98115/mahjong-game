@@ -58,7 +58,28 @@ npm run typecheck         # web app and shared src/
 npm run typecheck:socket  # socket-server
 ```
 
-### Bot integration test
+### Bot players
+
+Bots are first-class seats. A seated player can add a bot to a waiting game via:
+
+```http
+POST /api/games/:gameId/bot
+{ "difficulty": "low" | "medium" | "smart" }
+```
+
+The three difficulty levels:
+
+| Level | Turn action | Claim action |
+| --- | --- | --- |
+| **Low** | Always discard the drawn tile | Always pass |
+| **Medium** | Keep pairs; pong / kong when possible | Pong / kong (no chow, no win) |
+| **Smart** | `evaluateWin` tsumo check; greedy set-strength discard | Win > pong/kong > chow > pass |
+
+Once the 4th seat is filled the round deals automatically. The socket server's **`BotDriver`** then advances each bot's turn after every game action — no client needed. Bot turns flow through the same `GameActionQueue` and `PlayActions` pipeline as human turns.
+
+Bot logic: [`src/logic/server/game/bot/botPlayer.ts`](src/logic/server/game/bot/botPlayer.ts). Full design notes: [`docs/bot.md`](docs/bot.md).
+
+#### Bot integration test
 
 Runs two in-process scenarios with no database or Redis required — all state is in-memory:
 
@@ -66,13 +87,11 @@ Runs two in-process scenarios with no database or Redis required — all state i
 npm run bot:play
 ```
 
-**Scenario 1 — Deterministic Win:** A stacked wall deals seat 0 a near-complete hand (two chows + one east tile). `autoDraw` immediately draws the second east, giving seat 0 a winning hand on turn 1. The Smart bot detects this via `evaluateWin` and declares a self-draw win.
+**Scenario 1 — Deterministic Win:** A stacked wall deals seat 0 a near-complete hand (two chows + one east tile). The Smart bot draws the winning tile on turn 1, detects the win via `evaluateWin`, and declares a self-draw.
 
-**Scenario 2 — Random Play to Completion:** Four Low bots on a standard Hong Kong table. Low bots always discard the drawn tile and pass every claim window, so the game runs until the wall is exhausted (exhaustive draw).
+**Scenario 2 — Random Play to Completion:** Four Low bots on a standard Hong Kong table. Low bots always discard the drawn tile and pass every claim, so the game runs to wall exhaustion.
 
 Both scenarios assert the expected terminal state and print `PASS` or exit with code 1 on failure.
-
-Bot logic lives in [`src/logic/server/game/bot/botPlayer.ts`](src/logic/server/game/bot/botPlayer.ts). See [`docs/bot.md`](docs/bot.md) for difficulty levels, `BotContext`, and the future socket-server integration path.
 
 ---
 
@@ -90,9 +109,9 @@ Bot logic lives in [`src/logic/server/game/bot/botPlayer.ts`](src/logic/server/g
 | Redis: claim window answers, write-through round and hand cache, game channel (`gameAborted`, `gameChanged`, `nextWind`) | Done |
 | Socket.IO handlers: ticket auth, join, draw, discard, claim, pass, declare win, presence, claim timer, fan-out | Done |
 | Vue game client | Not started |
-| Bot players (Low / Medium / Smart difficulty, in-process integration test) | Done |
+| Bot players: Low / Medium / Smart difficulty, `POST /api/games/:gameId/bot`, `BotDriver` socket wiring, in-process integration test | Done |
 
-Design notes live in `docs/` (`game.md`, `database.md`, `socket.md`, `types.md`, `bot.md`).
+Design notes live in `docs/` (`game.md`, `database.md`, `socket.md`, `types.md`, `bot.md`). Bot API and heuristics: [`docs/bot.md`](docs/bot.md).
 
 ---
 

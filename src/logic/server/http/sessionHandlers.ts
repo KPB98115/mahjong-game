@@ -98,6 +98,27 @@ export async function postGame(
   return snapshotResponse(c, await gamesLogic.create(session.userId, body.value));
 }
 
+export async function postAddBot(
+  c: Context,
+  gameId: string,
+  authLogic: AuthLogic,
+  seatsLogic: SeatsLogic,
+  now: Date,
+): Promise<Response> {
+  const session = await requireLiveSession(c, authLogic, now);
+  if (!session.ok) {
+    return session.response;
+  }
+  if (!isUuid(gameId)) {
+    return c.json(failedEnvelope(ApiError.GameNotFound), HttpStatus.NotFound);
+  }
+  const body = await readJsonBody(c);
+  if (!body.ok) {
+    return c.json(failedEnvelope(ApiError.InvalidBody), HttpStatus.UnprocessableEntity);
+  }
+  return snapshotResponse(c, await seatsLogic.addBot(session.userId, gameId, body.value, now));
+}
+
 export async function postJoinGame(
   c: Context,
   authLogic: AuthLogic,
