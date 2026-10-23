@@ -77,6 +77,8 @@ The three difficulty levels:
 
 Once the 4th seat is filled the round deals automatically. The socket server's **`BotDriver`** then advances each bot's turn after every game action — no client needed. Bot turns flow through the same `GameActionQueue` and `PlayActions` pipeline as human turns.
 
+A bot has no browser socket. The public snapshot includes `botDifficulty`, and joining the table emits connected presence for every bot seat, so the client shows the bot as present. A later away event does not mark a bot away.
+
 Bot logic: [`src/logic/server/game/bot/botPlayer.ts`](src/logic/server/game/bot/botPlayer.ts). Full design notes: [`docs/bot.md`](docs/bot.md).
 
 #### Bot integration test
@@ -93,6 +95,12 @@ npm run bot:play
 
 Both scenarios assert the expected terminal state and print `PASS` or exit with code 1 on failure.
 
+### Vue client
+
+The playable UI is a landscape PWA (Void pages + Vue). Traditional Chinese (`zh-TW`) is the default; English (`en-US`) is the other locale. `/` redirects to `/register` (display name, create a table, join with the 5-digit code). `/game/[uuid]` is the waiting room, the play table, and the round result.
+
+On a human discard turn the banner counts down that table's `claimWindowMs` (5 or 10 seconds). At zero the client discards the last tile in the hand. An unlimited window (`null`) shows no countdown and does not auto-discard. Bots are not on this timer; `BotDriver` plays their turns. The server still validates every discard.
+
 ---
 
 ### Progress
@@ -108,7 +116,7 @@ Both scenarios assert the expected terminal state and print `PASS` or exit with 
 | Concurrent actions: `SELECT ... FOR UPDATE` on the game row, plus a per-game queue in the socket server | Done |
 | Redis: claim window answers, write-through round and hand cache, game channel (`gameAborted`, `gameChanged`, `nextWind`) | Done |
 | Socket.IO handlers: ticket auth, join, draw, discard, claim, pass, declare win, presence, claim timer, fan-out | Done |
-| Vue game client | Not started |
+| Vue game client: landscape PWA, zh-TW / en-US, waiting room, play, round result, discard countdown | Done |
 | Bot players: Low / Medium / Smart difficulty, `POST /api/games/:gameId/bot`, `BotDriver` socket wiring, in-process integration test | Done |
 
 Design notes live in `docs/` (`game.md`, `database.md`, `socket.md`, `types.md`, `bot.md`). Bot API and heuristics: [`docs/bot.md`](docs/bot.md).
