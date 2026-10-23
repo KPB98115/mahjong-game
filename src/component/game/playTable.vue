@@ -62,7 +62,11 @@ function abort() {
 <template>
   <section class="play-table">
     <SeatRail :seats="snapshot.seats" :current-seat-index="play.round?.currentSeatIndex ?? null" />
-    <TurnBanner :round="play.round" :self-seat-index="play.selfSeatIndex" />
+    <TurnBanner
+      :round="play.round"
+      :self-seat-index="play.selfSeatIndex"
+      :turn-remaining-ms="play.view.turnRemainingMs"
+    />
     <p v-if="play.view.error" class="error" role="alert">
       {{ locale.errorLabel(play.view.error) }}
     </p>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { type Props } from "./[uuid].server";
-import { defineAsyncComponent, onMounted, reactive, ref } from "vue";
+import { defineAsyncComponent, onMounted, onUnmounted, reactive, ref } from "vue";
 import { useRouter } from "@void/vue";
 import { AuthLogic } from "../../src/logic/client/auth/authLogic";
 import { GamePageLogic } from "../../src/logic/client/game/gamePageLogic";
@@ -85,6 +85,10 @@ const hydrated = ref(false);
 onMounted(async () => {
   await pageLogic.bootstrap();
   hydrated.value = true;
+});
+
+onUnmounted(() => {
+  pageLogic.play.release();
 });
 
 function markCopied() {

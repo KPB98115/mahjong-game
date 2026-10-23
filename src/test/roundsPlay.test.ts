@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isBonusTileCode } from "../logic/server/game/wallTileCodes";
+import { BotDifficulty } from "../types/server/botDifficulty";
 import { EmitTarget } from "../types/server/emitTarget";
 import { GameStatus } from "../types/server/gameStatus";
 import { MeldType } from "../types/server/meldType";
@@ -734,6 +735,36 @@ describe("snapshotForSeat", () => {
       SocketError.StaleGame,
     );
     const waiting = await createPlayWorld({ players: 1 });
+    const added = await waiting.seatsLogic.addBot(
+      userAt(waiting, 0),
+      waiting.gameId,
+      { difficulty: BotDifficulty.Low },
+      playNow,
+    );
+    if (!("snapshot" in added)) {
+      throw new Error(added.error);
+    }
+    expect(added.snapshot.seats.map((seat) => seat.botDifficulty)).toEqual([
+      null,
+      BotDifficulty.Low,
+    ]);
+    const seated = await waiting.roundsLogic.snapshotForSeat({
+      gameId: waiting.gameId,
+      userId: userAt(waiting, 0),
+    });
+    if (!seated.ok) {
+      throw new Error(seated.error);
+    }
+    const presence = [];
+    for (const emit of seated.result.emits) {
+      if (emit.event === SocketEvent.Presence) {
+        presence.push(emit.payload);
+      }
+    }
+    expect(presence).toEqual([
+      { seatIndex: 0, connected: true },
+      { seatIndex: 1, connected: true },
+    ]);
     const spectate = await waiting.roundsLogic.snapshotForSeat({
       gameId: waiting.gameId,
       userId: userAt(waiting, 0),

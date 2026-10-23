@@ -90,6 +90,7 @@ export enum MessageKey {
   ResultAbort = "resultAbort",
   ResultComplete = "resultComplete",
   ClaimWindowOpen = "claimWindowOpen",
+  TurnSeconds = "turnSeconds",
   ErrorUnauthorized = "errorUnauthorized",
   ErrorGameNotFound = "errorGameNotFound",
   ErrorAlreadySeated = "errorAlreadySeated",

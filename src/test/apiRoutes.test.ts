@@ -332,6 +332,7 @@ describe("POST /api/games", () => {
         displayName: "Host",
         runningScore: 0,
         nextWindAgreed: false,
+        botDifficulty: null,
       },
     ]);
     expect(snapshot.round).toBeNull();

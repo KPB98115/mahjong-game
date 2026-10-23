@@ -10,6 +10,6 @@ export function seatModelsFrom(
 ): SeatModel[] {
   return seats.map((seat) => ({
     ...seat,
-    connected: connectedBySeat.get(seat.seatIndex) === true,
+    connected: seat.botDifficulty != null || connectedBySeat.get(seat.seatIndex) === true,
   }));
 }

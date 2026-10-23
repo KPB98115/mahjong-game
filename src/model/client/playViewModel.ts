@@ -4,6 +4,7 @@ export type PlayViewModel = {
   selectedTileIds: string[];
   pending: boolean;
   claimTimeoutMs: number | null;
+  turnRemainingMs: number | null;
   error: SocketError | undefined;
 };
 
@@ -12,6 +13,7 @@ export function emptyPlayViewModel(): PlayViewModel {
     selectedTileIds: [],
     pending: false,
     claimTimeoutMs: null,
+    turnRemainingMs: null,
     error: undefined,
   };
 }

@@ -19,11 +19,33 @@ import { type GameSnapshot } from "../../../model/server/gameSnapshot";
 import { type GameSocketPort } from "../../../types/client/gameSocketPort";
 import { type MeldType } from "../../../types/server/meldType";
 import { RoundPhase } from "../../../types/server/roundPhase";
+import { SocketError } from "../../../types/server/socketError";
 
 export type PlayEmitter = Pick<
   GameSocketPort,
   "draw" | "discard" | "claim" | "passClaim" | "declareWin"
 >;
+
+export type PlayClock = {
+  now(): number;
+  every(intervalMs: number, tick: () => void): () => void;
+};
+
+const turnTickMs = 200;
+
+function defaultPlayClock(): PlayClock {
+  return {
+    now() {
+      return Date.now();
+    },
+    every(intervalMs, tick) {
+      const handle = setInterval(tick, intervalMs);
+      return function stop() {
+        clearInterval(handle);
+      };
+    },
+  };
+}
 
 export class PlayLogic {
   view: PlayViewModel = emptyPlayViewModel();
@@ -32,8 +54,17 @@ export class PlayLogic {
   round: RoundModel | null = null;
   selfSeatIndex: number | null = null;
   autoDraw = true;
+  private gameId: string | null = null;
+  private pendingDiscardTileId: string | null = null;
+  private turnLimitMs: number | null = null;
+  private deadlineMs: number | null = null;
+  private stopClock: (() => void) | null = null;
+  private discardSent = false;
 
-  constructor(readonly emitter: PlayEmitter | undefined = undefined) {}
+  constructor(
+    readonly emitter: PlayEmitter | undefined = undefined,
+    private clock: PlayClock = defaultPlayClock(),
+  ) {}
 
   get selectedTileIds(): string[] {
     return this.view.selectedTileIds;
@@ -64,11 +95,14 @@ export class PlayLogic {
   }
 
   applySnapshot(snapshot: GameSnapshot): void {
+    this.gameId = snapshot.game.id;
+    this.turnLimitMs = snapshot.game.claimWindowMs;
     this.autoDraw = snapshot.game.autoDraw;
     this.round = snapshot.round;
     this.publicTiles = snapshot.publicTiles;
     this.selfSeatIndex = snapshot.self?.seatIndex ?? null;
     this.hand = snapshot.self?.handTiles ?? [];
+    this.syncTurnClock();
   }
 
   applySelfHand(payload: SelfHandPayload): void {
@@ -118,7 +152,12 @@ export class PlayLogic {
         },
       ],
     };
-    this.hand = this.hand.filter((tile) => tile.id !== payload.tileId);
+    const removeIds = new Set<string>([payload.tileId]);
+    if (payload.seatIndex === this.selfSeatIndex && this.pendingDiscardTileId != null) {
+      removeIds.add(this.pendingDiscardTileId);
+      this.pendingDiscardTileId = null;
+    }
+    this.hand = this.hand.filter((tile) => !removeIds.has(tile.id));
   }
 
   applyClaimWindow(payload: ClaimWindowPayload): void {
@@ -156,6 +195,7 @@ export class PlayLogic {
         winKind: null,
         wallRemainingCount: 0,
       };
+      this.syncTurnClock();
       return;
     }
     this.round = {
@@ -163,10 +203,14 @@ export class PlayLogic {
       phase: payload.phase,
       currentSeatIndex: payload.currentSeatIndex,
     };
+    this.syncTurnClock();
   }
 
   applyRoundEnded(payload: RoundEndedPayload): void {
     this.view.claimTimeoutMs = null;
+    this.stopTurnClock();
+    this.discardSent = false;
+    this.view.turnRemainingMs = null;
     if (this.round == null) {
       return;
     }
@@ -179,6 +223,14 @@ export class PlayLogic {
 
   applyActionError(payload: ActionErrorPayload): void {
     this.view.error = payload.error;
+    if (payload.error !== SocketError.InvalidTile || this.pendingDiscardTileId == null) {
+      return;
+    }
+    const failedId = this.pendingDiscardTileId;
+    this.pendingDiscardTileId = null;
+    this.hand = this.hand.filter((tile) => tile.id !== failedId);
+    this.discardSent = false;
+    this.syncTurnClock();
   }
 
   toggleTile(tileId: string): void {
@@ -208,11 +260,13 @@ export class PlayLogic {
     if (tileId == null) {
       return;
     }
-    const parsed = discardActionSchema.safeParse({ gameId, tileId });
-    if (!parsed.success) {
-      return;
-    }
-    this.emitter?.discard(parsed.data);
+    this.sendDiscard(gameId, tileId);
+  }
+
+  release(): void {
+    this.stopTurnClock();
+    this.discardSent = true;
+    this.view.turnRemainingMs = null;
   }
 
   claim(gameId: string, kind: MeldType): void {
@@ -250,6 +304,64 @@ export class PlayLogic {
       return;
     }
     this.emitter?.declareWin(parsed.data);
+  }
+
+  private sendDiscard(gameId: string, tileId: string): void {
+    const parsed = discardActionSchema.safeParse({ gameId, tileId });
+    if (!parsed.success) {
+      return;
+    }
+    this.discardSent = true;
+    this.pendingDiscardTileId = tileId;
+    this.view.error = undefined;
+    this.stopTurnClock();
+    this.view.turnRemainingMs = null;
+    this.emitter?.discard(parsed.data);
+  }
+
+  private syncTurnClock(): void {
+    const timing = this.isSelfTurn(RoundPhase.Discard) && this.turnLimitMs != null;
+    if (!timing) {
+      this.stopTurnClock();
+      this.discardSent = false;
+      this.view.turnRemainingMs = null;
+      return;
+    }
+    if (this.discardSent || this.stopClock != null || this.turnLimitMs == null) {
+      return;
+    }
+    this.deadlineMs = this.clock.now() + this.turnLimitMs;
+    this.view.turnRemainingMs = this.turnLimitMs;
+    this.stopClock = this.clock.every(turnTickMs, () => {
+      this.onTurnTick();
+    });
+  }
+
+  private onTurnTick(): void {
+    if (this.deadlineMs == null) {
+      return;
+    }
+    const remaining = Math.max(0, this.deadlineMs - this.clock.now());
+    this.view.turnRemainingMs = remaining;
+    if (remaining > 0) {
+      return;
+    }
+    if (this.gameId == null) {
+      this.release();
+      return;
+    }
+    const tile = this.hand[this.hand.length - 1];
+    if (tile == null) {
+      this.release();
+      return;
+    }
+    this.sendDiscard(this.gameId, tile.id);
+  }
+
+  private stopTurnClock(): void {
+    this.stopClock?.();
+    this.stopClock = null;
+    this.deadlineMs = null;
   }
 
   private isSelfTurn(phase: RoundPhase): boolean {

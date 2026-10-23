@@ -1,14 +1,19 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import { type RoundModel } from "../../model/client/roundModel";
 import { useLocale } from "../../logic/client/locale/useLocale";
 import { MessageKey } from "../../types/client/messageKey";
 
-defineProps<{
+const props = defineProps<{
   round: RoundModel | null;
   selfSeatIndex: number | null;
+  turnRemainingMs: number | null;
 }>();
 
 const locale = useLocale();
+const turnSeconds = computed(() =>
+  props.turnRemainingMs == null ? null : Math.ceil(props.turnRemainingMs / 1000),
+);
 </script>
 
 <template>
@@ -18,6 +23,9 @@ const locale = useLocale();
     <span v-if="selfSeatIndex === round.currentSeatIndex">{{
       locale.text(MessageKey.YourTurn)
     }}</span>
+    <span v-if="turnSeconds != null">
+      · {{ locale.text(MessageKey.TurnSeconds, { seconds: String(turnSeconds) }) }}</span
+    >
     · {{ locale.text(MessageKey.Wall) }} {{ round.wallRemainingCount }}
   </p>
 </template>

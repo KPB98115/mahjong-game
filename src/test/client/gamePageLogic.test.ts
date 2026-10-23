@@ -190,6 +190,82 @@ describe("GamePageLogic", () => {
     expect(logic.panel).toBe(GamePanel.Play);
   });
 
+  it("keeps the live hand when a public state refresh arrives", () => {
+    const snapshot = waitingSnapshot({ gameId, status: GameStatus.InProgress });
+    snapshot.game.claimWindowMs = null;
+    snapshot.round = {
+      phase: RoundPhase.Discard,
+      currentSeatIndex: 0,
+      resultType: null,
+      winKind: null,
+      wallRemainingCount: 80,
+    };
+    snapshot.self = {
+      seatIndex: 0,
+      handTiles: [
+        {
+          id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          tileCode: "man_1",
+          sortIndex: 0,
+          isDrawn: false,
+        },
+        {
+          id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+          tileCode: "man_2",
+          sortIndex: 1,
+          isDrawn: true,
+        },
+      ],
+    };
+    const { logic } = createPage(createFakeFetch([]));
+    logic.applySnapshot(snapshot);
+    logic.play.toggleTile("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
+    logic.discard();
+    logic.applyDiscarded({ seatIndex: 0, tileCode: "man_2", tileId: "discard-row" });
+    const { self: _self, ...publicState } = snapshot;
+    logic.applyPublicState({
+      ...publicState,
+      round: {
+        phase: RoundPhase.Claim,
+        currentSeatIndex: 0,
+        resultType: null,
+        winKind: null,
+        wallRemainingCount: 80,
+      },
+      publicTiles: {
+        discards: [{ seatIndex: 0, tileCode: "man_2", sortIndex: 0 }],
+        melds: [],
+        flowerTiles: [],
+      },
+    });
+    expect(logic.play.hand.map((tile) => tile.id)).toEqual([
+      "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    ]);
+    expect(logic.play.publicTiles.discards).toEqual([
+      { seatIndex: 0, tileCode: "man_2", sortIndex: 0 },
+    ]);
+  });
+
+  it("keeps a bot seat connected when presence says away", () => {
+    const snapshot = waitingSnapshot({ gameId });
+    snapshot.seats.push({
+      seatIndex: 1,
+      userId: "bot-1",
+      displayName: "Bot (low)",
+      runningScore: 0,
+      nextWindAgreed: false,
+      botDifficulty: BotDifficulty.Low,
+    });
+    const { logic } = createPage(createFakeFetch([]));
+    logic.applySnapshot(snapshot);
+    expect(logic.snapshot?.seats[1]?.connected).toBe(true);
+    logic.applyPresence(1, false);
+    expect(logic.snapshot?.seats[1]?.connected).toBe(true);
+    logic.applyPresence(0, true);
+    logic.applyPresence(0, false);
+    expect(logic.snapshot?.seats[0]?.connected).toBe(false);
+  });
+
   it("marks the invitation code copied on the waiting view model", async () => {
     const { logic } = createPage(createFakeFetch([]));
     logic.markCodeCopied();

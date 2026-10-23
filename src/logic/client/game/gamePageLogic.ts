@@ -81,6 +81,7 @@ export class GamePageLogic {
       this.waiting.error = result.error;
       return;
     }
+    this.play.release();
     this.socket.disconnect();
     this.navigator.visit("/register");
   }
@@ -122,7 +123,11 @@ export class GamePageLogic {
   }
 
   applyPublicState(payload: PublicStatePayload): void {
-    const self = this.snapshot?.self ?? null;
+    const previous = this.snapshot?.self ?? null;
+    const self =
+      previous == null
+        ? null
+        : { seatIndex: previous.seatIndex, handTiles: this.play.hand };
     this.applySnapshot({ ...payload, self });
   }
 
@@ -134,6 +139,7 @@ export class GamePageLogic {
   }
 
   onGameAborted(): void {
+    this.play.release();
     this.socket.disconnect();
     this.navigator.visit("/register");
   }
@@ -238,6 +244,7 @@ function toWireSnapshot(model: GameSnapshotModel): GameSnapshot {
       displayName: seat.displayName,
       runningScore: seat.runningScore,
       nextWindAgreed: seat.nextWindAgreed,
+      botDifficulty: seat.botDifficulty,
     })),
     round: model.round,
     self: model.self,

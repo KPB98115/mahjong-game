@@ -43,6 +43,7 @@ export function waitingSnapshot(
         displayName: overrides.displayName ?? "Host",
         runningScore: 0,
         nextWindAgreed: false,
+        botDifficulty: null,
       },
     ],
     round: null,
