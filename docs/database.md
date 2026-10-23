@@ -400,11 +400,14 @@ Upsert before the game is deleted:
 
 | Key | Contents |
 | --- | --- |
-| `game:{gameId}:round` | Cache of the round row plus wall, discards, melds |
-| `game:{gameId}:hand:{seat}` | Cache of that seat’s concealed hand |
-| Pub/sub `game:{gameId}` | Fan-out from HTTP (abort): `{ "event": "gameAborted", "gameId" }`. Socket-server emits to the room. |
+| `game:{gameId}:round` | The `publicState` payload (game, seats, round, public tiles, scores). 24 h TTL. |
+| `game:{gameId}:hand:{seat}` | `{ tiles }`: that seat's concealed hand in the `selfHand` shape. 24 h TTL. |
+| `game:{gameId}:claimWindow` | Answers for the open claim / rob-kong window (`ClaimWindowState`). Saved inside the locked play transaction, deleted after it resolves. 24 h TTL. |
+| Pub/sub `game:{gameId}` | Fan-out from HTTP: `gameAborted`, `gameChanged`, `nextWind` (see [`docs/socket.md`](socket.md#game-channel-redis-pubsub)). |
 
-On miss, read Postgres and SET. Never treat a Redis value as authoritative.
+Write-through: after each play commit, logic writes `round` and every seat's `hand`. Reads (`snapshotForSeat`) use the cache and rebuild from Postgres on a miss. Redis errors on the round cache never fail an action. `gameChanged` deletes the cache keys before publishing. Never treat a Redis value as authoritative.
+
+Every play transaction starts with `SELECT ... FOR UPDATE` on the `game.games` row, so two actions on the same table never interleave.
 
 ### Four winds (locked)
 
@@ -534,7 +537,7 @@ Each file includes a `version` string (e.g. `2026-10-18`). At east-game create, 
 
 Logic (not the file) turns a winning hand into `round_scores.score_units` and `score_payments.amount`, using the JSON chart plus the rule columns on `game.games`.
 
-Do **not** implement these JSON files until scoring work starts. This is the storage decision only.
+Both files are written (pattern units, `limitUnits`, and `payout`). Hong Kong pays `basePoints × 2^min(fan, capUnits)`; Taiwan pays `base + tai × perUnit`. Self-draw: each of the other three pays that amount. Seven pairs and thirteen orphans only count where the chart lists them.
 
 ### `tile_code` (locked)
 

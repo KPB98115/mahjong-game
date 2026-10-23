@@ -98,6 +98,7 @@ export type MemoryAuth = {
   users: Map<string, FakeUser>;
   sessions: Map<string, FakeSession>;
   seatedUserIds: Set<string>;
+  figures: FakeFigure[];
   authRepo: AuthRepo;
   userRepo: UserRepo;
   seatsRepo: SeatsRepo;
@@ -110,10 +111,12 @@ export function createMemoryAuth(): MemoryAuth {
   const sessions = new Map<string, FakeSession>();
   const seatedUserIds = new Set<string>();
   const attributes: FakeAttribute[] = [];
+  const figures: FakeFigure[] = [];
   let userCount = 0;
   let sessionCount = 0;
 
   const authRepo: AuthRepo = {
+    database: db,
     async insert(values) {
       insertOrder.push("session");
       sessionCount += 1;
@@ -151,6 +154,7 @@ export function createMemoryAuth(): MemoryAuth {
     },
   };
   const userRepo: UserRepo = {
+    database: db,
     async insert(values = {}) {
       insertOrder.push("user");
       userCount += 1;
@@ -168,8 +172,8 @@ export function createMemoryAuth(): MemoryAuth {
     async listAttributes(userId) {
       return attributes.filter((row) => row.userId === userId);
     },
-    async listFigures() {
-      return [];
+    async listFigures(userId) {
+      return figures.filter((row) => row.userId === userId);
     },
     async upsertAttribute(userId, name, value) {
       const existing = attributes.find((row) => row.userId === userId && row.name === name);
@@ -181,8 +185,19 @@ export function createMemoryAuth(): MemoryAuth {
       attributes.push(row);
       return row;
     },
+    async upsertFigure(userId, name, value) {
+      const existing = figures.find((row) => row.userId === userId && row.name === name);
+      if (existing != null) {
+        existing.value = value;
+        return existing;
+      }
+      const row: FakeFigure = { id: `figure-${figures.length + 1}`, userId, name, value };
+      figures.push(row);
+      return row;
+    },
   };
   const seatsRepo: SeatsRepo = {
+    database: db,
     async insert(values) {
       const row: SeatRow = {
         id: values.id ?? `seat-${values.userId}`,
@@ -229,6 +244,7 @@ export function createMemoryAuth(): MemoryAuth {
     users,
     sessions,
     seatedUserIds,
+    figures,
     authRepo,
     userRepo,
     seatsRepo,
@@ -307,6 +323,7 @@ export function createUserRepoFake(initial?: {
   const figures = initial?.figures ?? [];
   const upserts: { userId: string; name: string; value: string }[] = [];
   const repo: UserRepo = {
+    database: db,
     async insert() {
       throw new Error("insert is not used by UserLogic");
     },
@@ -329,6 +346,9 @@ export function createUserRepoFake(initial?: {
       const row: FakeAttribute = { id: `attr-${upserts.length}`, userId, name, value };
       attributes.push(row);
       return row;
+    },
+    async upsertFigure() {
+      throw new Error("upsertFigure is not used by UserLogic");
     },
   };
   return {

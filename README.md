@@ -48,7 +48,34 @@ Redis config and notes: **`redis/README.md`**. Socket.IO details: **`socket-serv
 
 4. Run the app: `npm run dev`
 
-5. Optional real-time server: `REDIS_URL=redis://localhost:6379 npm run socket:dev`
+5. Optional real-time server: `REDIS_URL=redis://localhost:6379 DATABASE_URL=postgresql://mahjong:mahjong@localhost:5432/mahjong_game npm run socket:dev`
+
+### Checks
+
+```sh
+npm run check             # lint, format check, tests (root and socket-server)
+npm run typecheck         # web app and shared src/
+npm run typecheck:socket  # socket-server
+```
+
+---
+
+### Progress
+
+| Area | Status |
+| --- | --- |
+| Database schema (`profile`, `auth`, `game`) | Done |
+| Session auth and socket tickets | Done |
+| HTTP API: create, join, snapshot, next wind, abort | Done |
+| Round logic: deal, draw with flower replacement, discard, chow / pong / kong claims, concealed and added kong, winning hands, empty wall | Done |
+| Scoring charts: Hong Kong (fan, `2^fan` capped at 10) and Taiwan (base + tai) | Done (drafted, open for review) |
+| Robbing an added kong (win-only window, `robbingKong` pattern) | Done |
+| Concurrent actions: `SELECT ... FOR UPDATE` on the game row, plus a per-game queue in the socket server | Done |
+| Redis: claim window answers, write-through round and hand cache, game channel (`gameAborted`, `gameChanged`, `nextWind`) | Done |
+| Socket.IO handlers: ticket auth, join, draw, discard, claim, pass, declare win, presence, claim timer, fan-out | Done |
+| Vue game client | Not started |
+
+Design notes live in `docs/` (`game.md`, `database.md`, `socket.md`, `types.md`).
 
 ---
 

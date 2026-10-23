@@ -1,31 +1,31 @@
-const suits = ["man", "bam", "dot"] as const;
-const honors = ["east", "south", "west", "north", "red", "green", "white"] as const;
-const flowers = ["flower_plum", "flower_orchid", "flower_chrysanthemum", "flower_bamboo"] as const;
-const seasons = ["season_spring", "season_summer", "season_autumn", "season_winter"] as const;
+import {
+  dragonOrder,
+  flowerOrder,
+  isBonusCode,
+  seasonOrder,
+  suitedCode,
+  suitOrder,
+  windOrder,
+} from "./tileCode";
 
 export function standardWallTileCodes(): string[] {
   const codes: string[] = [];
-  for (const suit of suits) {
+  for (const suit of suitOrder) {
     for (let rank = 1; rank <= 9; rank += 1) {
       for (let copy = 0; copy < 4; copy += 1) {
-        codes.push(`${suit}_${rank}`);
+        codes.push(suitedCode(suit, rank));
       }
     }
   }
-  for (const honor of honors) {
+  for (const honor of [...windOrder, ...dragonOrder]) {
     for (let copy = 0; copy < 4; copy += 1) {
       codes.push(honor);
     }
   }
-  for (const flower of flowers) {
-    codes.push(flower);
-  }
-  for (const season of seasons) {
-    codes.push(season);
-  }
+  codes.push(...flowerOrder, ...seasonOrder);
   return codes;
 }
 
 export function isBonusTileCode(tileCode: string): boolean {
-  return tileCode.startsWith("flower_") || tileCode.startsWith("season_");
+  return isBonusCode(tileCode);
 }

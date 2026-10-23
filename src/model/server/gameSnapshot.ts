@@ -9,7 +9,7 @@ import { Ruleset } from "../../types/server/ruleset";
 import { ScoreUnit } from "../../types/server/scoreUnit";
 import { WinKind } from "../../types/server/winKind";
 
-const handTileSchema = z.object({
+export const handTileSchema = z.object({
   id: z.string(),
   tileCode: z.string(),
   sortIndex: z.number(),
@@ -47,7 +47,7 @@ const roundSchema = z.object({
   wallRemainingCount: z.number(),
 });
 
-const roundScoreSchema = z.object({
+export const roundScoreSchema = z.object({
   seatIndex: z.number(),
   userId: z.string(),
   scoreDelta: z.number(),
@@ -56,7 +56,7 @@ const roundScoreSchema = z.object({
   isWinner: z.boolean(),
 });
 
-const scorePaymentSchema = z.object({
+export const scorePaymentSchema = z.object({
   fromSeatIndex: z.number(),
   toSeatIndex: z.number(),
   amount: z.number(),

@@ -1,4 +1,4 @@
-import { runTransaction } from "../db/executor";
+import { runTransaction, voidDatabase } from "../db/voidDatabase";
 import { SeatsRepo } from "../game/seatsRepo";
 import { deleteCachedSession, getCachedSession, setCachedSession } from "../redis/sessionCache";
 import { setSocketTicket } from "../redis/socketTicket";
@@ -8,9 +8,9 @@ import { AuthRepo } from "./authRepo";
 
 export function createAuthLogic(): AuthLogic {
   return new AuthLogic(
-    new AuthRepo(),
-    new UserRepo(),
-    new SeatsRepo(),
+    new AuthRepo(voidDatabase),
+    new UserRepo(voidDatabase),
+    new SeatsRepo(voidDatabase),
     {
       getSession: getCachedSession,
       setSession: setCachedSession,

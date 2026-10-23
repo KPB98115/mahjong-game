@@ -2,11 +2,11 @@ import { z } from "zod";
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
 import { AuthLogic } from "../logic/server/auth/authLogic";
+import { createMemoryClaimWindowStore } from "../logic/server/game/claimWindowStore";
+import { createGameLogics } from "../logic/server/game/gameLogics";
 import { type GameRandom } from "../logic/server/game/gameRandom";
-import { GamesLogic } from "../logic/server/game/gamesLogic";
-import { RoundsLogic } from "../logic/server/game/roundsLogic";
 import { scoringCatalogVersion } from "../logic/server/game/scoringVersion";
-import { SeatsLogic } from "../logic/server/game/seatsLogic";
+import { createRedisRoundCache } from "../logic/server/redis/roundCache";
 import { standardWallTileCodes } from "../logic/server/game/wallTileCodes";
 import {
   getGame,
@@ -38,6 +38,7 @@ import { Ruleset } from "../types/server/ruleset";
 import { ScoreUnit } from "../types/server/scoreUnit";
 import { createMemoryAuth, createMemoryRedis } from "./fakeAuth";
 import { createMemoryGame } from "./memoryGame";
+import { createMemoryRedisCommands } from "./memoryRedisCommands";
 
 const now = new Date("2026-06-01T00:00:00.000Z");
 const missingGameId = "00000000-0000-0000-0000-000000000000";
@@ -82,32 +83,14 @@ function createWorld(random: GameRandom = fixedRandom()) {
     scorePaymentsRepo: tables.scorePaymentsRepo,
     userRepo: auth.userRepo,
   };
-  const roundsLogic = new RoundsLogic(
-    repos.gamesRepo,
-    repos.roundsRepo,
-    repos.handsRepo,
-    repos.handTilesRepo,
-    repos.wallTilesRepo,
-    repos.flowerTilesRepo,
-    repos.seatsRepo,
-    random,
-  );
-  const seatsLogic = new SeatsLogic(
-    repos.seatsRepo,
-    repos.gamesRepo,
-    roundsLogic,
+  const { seatsLogic, gamesLogic } = createGameLogics({
     repos,
-    tables.runTransaction,
+    runTransaction: tables.runTransaction,
     random,
-  );
-  const gamesLogic = new GamesLogic(
-    repos,
-    roundsLogic,
-    seatsLogic,
-    tables.runTransaction,
-    random,
-    tables.redis,
-  );
+    redis: tables.redis,
+    claimWindowStore: createMemoryClaimWindowStore(),
+    roundCache: createRedisRoundCache(createMemoryRedisCommands()),
+  });
   const authLogic = new AuthLogic(
     auth.authRepo,
     auth.userRepo,
@@ -550,6 +533,7 @@ describe("POST /api/games/join and GET /api/games/:gameId", () => {
           }
           swap(copy, copy.indexOf("flower_plum"), 52);
           swap(copy, copy.indexOf("man_9"), copy.length - 1);
+          swap(copy, copy.indexOf("season_winter"), 53);
           return copy;
         },
       }),

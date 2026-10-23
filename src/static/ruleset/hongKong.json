@@ -1,0 +1,29 @@
+{
+  "version": "2026-10-18",
+  "scoreUnit": "fan",
+  "limitUnits": 13,
+  "payout": { "kind": "doubling", "basePoints": 1, "capUnits": 10 },
+  "patterns": {
+    "selfDraw": 1,
+    "concealedHand": 1,
+    "noFlowers": 1,
+    "ownFlower": 1,
+    "flowerSet": 2,
+    "lastTileSelfDraw": 1,
+    "robbingKong": 1,
+    "allChows": 1,
+    "allPongs": 3,
+    "halfFlush": 3,
+    "fullFlush": 7,
+    "allHonors": 10,
+    "dragonPong": 1,
+    "seatWindPong": 1,
+    "prevailingWindPong": 1,
+    "smallThreeDragons": 5,
+    "bigThreeDragons": 8,
+    "smallFourWinds": 10,
+    "bigFourWinds": 13,
+    "sevenPairs": 4,
+    "thirteenOrphans": 13
+  }
+}

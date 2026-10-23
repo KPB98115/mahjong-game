@@ -1,14 +1,20 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "outDir": "dist",
-    "rootDir": "src",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "strict": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
-    "noEmitOnError": true
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "types": ["node"],
+    "paths": {
+      "@app/*": ["../src/*"],
+      "@schema": ["../db/schema.ts"],
+      "@schema/*": ["../db/schema/*"],
+      "void/db": ["../.void/db.d.ts"]
+    }
   },
   "include": ["src/**/*.ts"]
 }

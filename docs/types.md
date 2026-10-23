@@ -29,8 +29,14 @@ Column enums used by `db/schema.ts` are written. The other files are not.
 | `src/types/server/roundResultType.ts` | `RoundResultType` | written |
 | `src/types/server/winKind.ts` | `WinKind` | written |
 | `src/types/server/meldType.ts` | `MeldType` | written |
-| `src/types/server/socketEvent.ts` | `SocketEvent` | not written |
-| `src/types/server/socketError.ts` | `SocketError` | not written |
+| `src/types/server/socketEvent.ts` | `SocketEvent` | written |
+| `src/types/server/socketError.ts` | `SocketError` | written |
+| `src/types/server/emitTarget.ts` | `EmitTarget` | written |
+| `src/types/server/claimAnswerKind.ts` | `ClaimAnswerKind` | written |
+| `src/types/server/tile.ts` | `TileKind`, `TileSuit`, `WindTile`, `DragonTile`, `FlowerTile`, `SeasonTile` | written |
+| `src/types/server/scoringPattern.ts` | `ScoringPattern` | written |
+| `src/types/server/payoutKind.ts` | `PayoutKind` | written |
+| `src/types/server/gameChannelEvent.ts` | `GameChannelEvent` (`gameAborted`, `gameChanged`, `nextWind`) | written |
 
 ---
 
@@ -85,7 +91,7 @@ Parse fail on `ruleset` → `rulesetUnknown`. Parse fail on `claimWindowMs` → 
 | `GameStatus` | `waiting`, `inProgress`, `completed`, `aborted` | `waiting`, `in_progress`, `completed`, `aborted` |
 | `PrevailingWind` | `east`, `south`, `west`, `north` | same |
 | `RoundStatus` | `inProgress`, `completed`, `aborted` | `in_progress`, `completed`, `aborted` |
-| `RoundPhase` | `draw`, `discard`, `claim` | same |
+| `RoundPhase` | `draw`, `discard`, `claim`, `robKong` | same (plain text column, no CHECK) |
 | `RoundResultType` | `win`, `draw`, `abort` | same |
 | `WinKind` | `selfDraw`, `discard` | `self_draw`, `discard` |
 | `MeldType` | `pong`, `kong`, `chow` | same |
