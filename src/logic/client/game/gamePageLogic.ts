@@ -125,9 +125,7 @@ export class GamePageLogic {
   applyPublicState(payload: PublicStatePayload): void {
     const previous = this.snapshot?.self ?? null;
     const self =
-      previous == null
-        ? null
-        : { seatIndex: previous.seatIndex, handTiles: this.play.hand };
+      previous == null ? null : { seatIndex: previous.seatIndex, handTiles: this.play.hand };
     this.applySnapshot({ ...payload, self });
   }
 
