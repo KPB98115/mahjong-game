@@ -3,6 +3,27 @@ import { defineConfig } from "void/config";
 
 export default defineConfig({
   database: "pg",
+  head: {
+    title: "麻將",
+    htmlAttrs: { lang: "zh-TW" },
+    meta: [
+      { charset: "utf-8" },
+      {
+        name: "viewport",
+        content: "width=device-width, initial-scale=1, viewport-fit=cover",
+      },
+      { name: "theme-color", content: "#0F172A" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "麻將" },
+    ],
+    link: [
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "icon", href: "/icons/icon-192.png" },
+      { rel: "apple-touch-icon", href: "/icons/icon-192.png" },
+    ],
+  },
   worker: {
     compatibility_date: "2026-02-24",
     compatibility_flags: ["nodejs_compat"],

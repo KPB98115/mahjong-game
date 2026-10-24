@@ -198,6 +198,12 @@ export class RoundsLogic {
       emits.push(publicStateEmit(publicState));
     }
     emits.push(presenceEmit(seat.seatIndex, true));
+    const table = await repos.seatsRepo.findByGameId(game.id);
+    for (const other of table) {
+      if (other.botDifficulty != null && other.seatIndex !== seat.seatIndex) {
+        emits.push(presenceEmit(other.seatIndex, true));
+      }
+    }
     return { ok: true, result: { gameId: game.id, emits } };
   }
 

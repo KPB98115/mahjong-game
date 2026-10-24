@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BotDifficulty } from "../../types/server/botDifficulty";
 import { DiscardWinPayer } from "../../types/server/discardWinPayer";
 import { GameStatus } from "../../types/server/gameStatus";
 import { MeldType } from "../../types/server/meldType";
@@ -22,6 +23,7 @@ const seatSchema = z.object({
   displayName: z.string().nullable(),
   runningScore: z.number(),
   nextWindAgreed: z.boolean(),
+  botDifficulty: z.enum(BotDifficulty).nullable(),
 });
 
 const meldTileSchema = z.object({

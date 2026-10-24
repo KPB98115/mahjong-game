@@ -108,6 +108,7 @@ async function buildPublicState(
       displayName: await displayName(repos.userRepo, seat.userId),
       runningScore: asNumber(seat.runningScore),
       nextWindAgreed: seat.nextWindAgreed,
+      botDifficulty: seat.botDifficulty,
     });
   }
   if (round == null) {
