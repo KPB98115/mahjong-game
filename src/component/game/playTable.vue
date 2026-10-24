@@ -15,6 +15,7 @@ const emit = defineEmits<{
   toggleTile: [tileId: string];
   draw: [];
   discard: [];
+  discardTile: [tileId: string];
   claim: [kind: MeldType];
   pass: [];
   win: [];
@@ -28,6 +29,7 @@ const MeldArea = defineAsyncComponent(() => import("./meldArea.vue"));
 const FlowerArea = defineAsyncComponent(() => import("./flowerArea.vue"));
 const ClaimBar = defineAsyncComponent(() => import("./claimBar.vue"));
 const TurnBanner = defineAsyncComponent(() => import("./turnBanner.vue"));
+const TileWall = defineAsyncComponent(() => import("./tileWall.vue"));
 const SeatRail = defineAsyncComponent(() => import("./seatRail.vue"));
 
 function toggleTile(tileId: string) {
@@ -40,6 +42,10 @@ function draw() {
 
 function discard() {
   emit("discard");
+}
+
+function discardTile(tileId: string) {
+  emit("discardTile", tileId);
 }
 
 function claim(kind: MeldType) {
@@ -67,6 +73,7 @@ function abort() {
       :self-seat-index="play.selfSeatIndex"
       :turn-remaining-ms="play.view.turnRemainingMs"
     />
+    <TileWall v-if="play.round" :count="play.round.wallRemainingCount" />
     <p v-if="play.view.error" class="error" role="alert">
       {{ locale.errorLabel(play.view.error) }}
     </p>
@@ -79,26 +86,34 @@ function abort() {
       :tiles="play.hand"
       :selected-tile-ids="play.view.selectedTileIds"
       @toggle="toggleTile"
+      @discard-tile="discardTile"
     />
-    <ClaimBar
-      :can-claim="play.canClaim"
-      :can-pass="play.canPass"
-      :can-declare-win="play.canDeclareWin"
-      :claim-timeout-ms="play.view.claimTimeoutMs"
-      @claim="claim"
-      @pass="pass"
-      @win="win"
-    />
-    <div class="actions">
-      <button class="btn" type="button" :disabled="!play.canDraw" @click="draw">
-        {{ locale.text(MessageKey.DrawTile) }}
-      </button>
-      <button class="btn btn-accent" type="button" :disabled="!play.canDiscard" @click="discard">
-        {{ locale.text(MessageKey.DiscardTile) }}
-      </button>
-      <button class="btn btn-danger" type="button" @click="abort">
-        {{ locale.text(MessageKey.AbortTable) }}
-      </button>
+    <div class="dock">
+      <ClaimBar
+        :can-claim="play.canClaim"
+        :can-pass="play.canPass"
+        :can-declare-win="play.canDeclareWin"
+        :claim-timeout-ms="play.view.claimTimeoutMs"
+        @claim="claim"
+        @pass="pass"
+        @win="win"
+      />
+      <div class="actions">
+        <button class="btn" type="button" :disabled="!play.canDraw" @click="draw">
+          {{ locale.text(MessageKey.DrawTile) }}
+        </button>
+        <button
+          class="btn btn-accent"
+          type="button"
+          :disabled="!play.canPressDiscard"
+          @click="discard"
+        >
+          {{ locale.text(MessageKey.DiscardTile) }}
+        </button>
+        <button class="btn btn-danger" type="button" @click="abort">
+          {{ locale.text(MessageKey.AbortTable) }}
+        </button>
+      </div>
     </div>
   </section>
 </template>
@@ -109,20 +124,25 @@ function abort() {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 1cqh;
+  gap: 0.6cqh;
 }
 
 .felt {
   flex: 1;
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 0.8fr);
-  gap: 1.5cqw;
+  gap: 1.2cqw;
   align-content: start;
 }
 
+.dock {
+  display: grid;
+  gap: 0.5cqh;
+}
+
 .actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-md);
+  display: grid;
+  grid-template-columns: 1fr 1.4fr auto;
+  gap: 0.6cqw;
 }
 </style>

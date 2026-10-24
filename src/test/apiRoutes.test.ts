@@ -351,6 +351,48 @@ describe("POST /api/games", () => {
     });
   });
 
+  it("locks Hong Kong to fan with a minimum of 3 and Taiwan to tai", async () => {
+    const codes = ["04217", "04218"];
+    const { app } = createWorld(
+      fixedRandom({
+        referenceCode() {
+          return codes.shift() ?? "09999";
+        },
+      }),
+    );
+    const hongKongHost = await register(app);
+    const taiwanHost = await register(app);
+    const hongKong = successData(
+      gameSnapshotSchema,
+      await call(app, "POST", "/api/games", hongKongHost.cookie, {
+        ruleset: "hongKong",
+        scoreUnit: "tai",
+        chowOnlyFromPrevious: false,
+      }),
+    );
+    expect(hongKong.game).toMatchObject({
+      ruleset: Ruleset.HongKong,
+      scoreUnit: ScoreUnit.Fan,
+      minScoreUnits: 3,
+      chowOnlyFromPrevious: true,
+    });
+    const taiwan = successData(
+      gameSnapshotSchema,
+      await call(app, "POST", "/api/games", taiwanHost.cookie, {
+        ruleset: "taiwan",
+        scoreUnit: "fan",
+        minScoreUnits: 1,
+        chowOnlyFromPrevious: false,
+      }),
+    );
+    expect(taiwan.game).toMatchObject({
+      ruleset: Ruleset.Taiwan,
+      scoreUnit: ScoreUnit.Tai,
+      minScoreUnits: 1,
+      chowOnlyFromPrevious: false,
+    });
+  });
+
   it("stores explicit rule overrides and retries a colliding reference code", async () => {
     const codes = ["04217", "04218"];
     const world = createWorld(

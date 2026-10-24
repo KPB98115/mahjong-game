@@ -10,24 +10,34 @@ const src = computed(() => tileFaceSrc(props.tileCode));
 </script>
 
 <template>
-  <img v-if="src" class="tile-face" :src="src" :alt="tileCode" width="44" height="58" />
-  <span v-else class="tile-face">{{ tileCode }}</span>
+  <span class="tile-plate">
+    <img v-if="src" class="tile-face" :src="src" :alt="tileCode" width="44" height="58" />
+    <span v-else class="tile-face">{{ tileCode }}</span>
+  </span>
 </template>
 
 <style scoped>
+.tile-plate {
+  display: inline-flex;
+  isolation: isolate;
+  border-radius: var(--radius-sm);
+  background: var(--color-tile);
+  box-shadow: var(--shadow-sm);
+}
+
 .tile-face {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.75rem;
-  height: 3.6rem;
+  width: clamp(2.15rem, 7.5cqh, 2.75rem);
+  height: clamp(2.9rem, 10cqh, 3.6rem);
   object-fit: contain;
   padding: 0.15rem;
-  border: 1px solid #d6c7a1;
+  border: 1px solid #e7a0b4;
   border-radius: var(--radius-sm);
-  background: var(--color-tile);
+  background: transparent;
   color: var(--color-tile-ink);
-  box-shadow: var(--shadow-sm);
+  mix-blend-mode: multiply;
   font-size: 0.7rem;
 }
 </style>

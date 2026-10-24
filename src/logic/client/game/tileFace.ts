@@ -23,6 +23,10 @@ export function tileFaceSrc(tileCode: string): string | undefined {
   return tileModules[`../../../static/tiles/${fileName}`];
 }
 
+export function tileCoverSrc(): string | undefined {
+  return tileModules["../../../static/tiles/cover.svg"];
+}
+
 const tileModules = import.meta.glob("../../../static/tiles/*.svg", {
   eager: true,
   query: "?url",

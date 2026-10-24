@@ -3,6 +3,7 @@ import { type Props } from "./[uuid].server";
 import { defineAsyncComponent, onMounted, onUnmounted, reactive, ref } from "vue";
 import { useRouter } from "@void/vue";
 import { AuthLogic } from "../../src/logic/client/auth/authLogic";
+import { storedDevMode } from "../../src/logic/client/dev/devModeLogic";
 import { GamePageLogic } from "../../src/logic/client/game/gamePageLogic";
 import { GamesLogic } from "../../src/logic/client/game/gamesLogic";
 import { ioSocketFactory } from "../../src/logic/client/game/ioSocketFactory";
@@ -83,6 +84,7 @@ pageLogic = reactive(
 const hydrated = ref(false);
 
 onMounted(async () => {
+  pageLogic.play.useDevMode(storedDevMode(localStorage));
   await pageLogic.bootstrap();
   hydrated.value = true;
 });
@@ -113,6 +115,10 @@ function drawTile() {
 
 function discardTile() {
   pageLogic.discard();
+}
+
+function discardHandTile(tileId: string) {
+  pageLogic.discardTile(tileId);
 }
 
 function claimMeld(kind: MeldType) {
@@ -157,6 +163,7 @@ function agreeNextWind() {
         @toggle-tile="toggleTile"
         @draw="drawTile"
         @discard="discardTile"
+        @discard-tile="discardHandTile"
         @claim="claimMeld"
         @pass="passClaim"
         @win="declareWin"
@@ -177,8 +184,8 @@ function agreeNextWind() {
 .game-page {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  gap: 1cqh;
-  padding: 0 2cqw 1.5cqh;
+  gap: 0.4cqh;
+  padding: 0 1.2cqw 0.6cqh;
 }
 
 .game-page > section {
@@ -186,13 +193,27 @@ function agreeNextWind() {
 }
 
 .hero {
-  display: grid;
-  gap: 0.3cqh;
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  min-height: 0;
+}
+
+.hero h1 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .kicker {
   color: var(--color-accent);
-  font-size: 1.8cqh;
+  font-size: clamp(0.8rem, 2.6cqh, 0.95rem);
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;

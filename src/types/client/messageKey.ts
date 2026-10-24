@@ -111,4 +111,5 @@ export enum MessageKey {
   ErrorInvalidClaim = "errorInvalidClaim",
   ErrorNoClaimWindow = "errorNoClaimWindow",
   ErrorStaleGame = "errorStaleGame",
+  DevMode = "devMode",
 }

@@ -33,7 +33,10 @@ const locale = useLocale();
 <style scoped>
 .area {
   display: grid;
-  gap: var(--space-md);
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.5cqw;
+  align-items: start;
+  min-height: 0;
 }
 
 .melds {

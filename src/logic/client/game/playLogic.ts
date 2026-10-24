@@ -58,6 +58,7 @@ export class PlayLogic {
   private pendingDiscardTileId: string | null = null;
   private turnLimitMs: number | null = null;
   private deadlineMs: number | null = null;
+  private devMode = false;
   private stopClock: (() => void) | null = null;
   private discardSent = false;
 
@@ -80,6 +81,10 @@ export class PlayLogic {
 
   get canDiscard(): boolean {
     return this.isSelfTurn(RoundPhase.Discard);
+  }
+
+  get canPressDiscard(): boolean {
+    return this.canDiscard && this.view.selectedTileIds.length <= 1;
   }
 
   get canClaim(): boolean {
@@ -253,7 +258,7 @@ export class PlayLogic {
   }
 
   discard(gameId: string): void {
-    if (!this.canDiscard || this.view.selectedTileIds.length !== 1) {
+    if (!this.canPressDiscard || this.view.selectedTileIds.length !== 1) {
       return;
     }
     const tileId = this.view.selectedTileIds[0];
@@ -263,10 +268,22 @@ export class PlayLogic {
     this.sendDiscard(gameId, tileId);
   }
 
+  discardTile(gameId: string, tileId: string): void {
+    if (!this.canPressDiscard || !this.hand.some((tile) => tile.id === tileId)) {
+      return;
+    }
+    this.sendDiscard(gameId, tileId);
+  }
+
   release(): void {
     this.stopTurnClock();
     this.discardSent = true;
     this.view.turnRemainingMs = null;
+  }
+
+  useDevMode(enabled: boolean): void {
+    this.devMode = enabled;
+    this.syncTurnClock();
   }
 
   claim(gameId: string, kind: MeldType): void {
@@ -320,7 +337,8 @@ export class PlayLogic {
   }
 
   private syncTurnClock(): void {
-    const timing = this.isSelfTurn(RoundPhase.Discard) && this.turnLimitMs != null;
+    const timing =
+      !this.devMode && this.isSelfTurn(RoundPhase.Discard) && this.turnLimitMs != null;
     if (!timing) {
       this.stopTurnClock();
       this.discardSent = false;

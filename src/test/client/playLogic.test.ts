@@ -79,6 +79,32 @@ describe("PlayLogic", () => {
     expect(emitted[1]).toEqual({ gameId, kind: MeldType.Chow, tileIds: [tileA, tileB] });
   });
 
+  it("discards a double-clicked tile and refuses discard while several tiles are selected", () => {
+    const emitted: object[] = [];
+    const play = new PlayLogic({
+      draw() {},
+      discard(payload) {
+        emitted.push(payload);
+      },
+      claim() {},
+      passClaim() {},
+      declareWin() {},
+    });
+    play.applySnapshot(inProgressSnapshot(RoundPhase.Discard, 0));
+    expect(play.canPressDiscard).toBe(true);
+    play.discardTile(gameId, tileA);
+    expect(emitted).toEqual([{ gameId, tileId: tileA }]);
+    play.applyTurn({ currentSeatIndex: 1, phase: RoundPhase.Draw });
+    play.applyTurn({ currentSeatIndex: 0, phase: RoundPhase.Discard });
+    play.toggleTile(tileA);
+    play.toggleTile(tileB);
+    expect(play.canPressDiscard).toBe(false);
+    play.discard(gameId);
+    play.discardTile(gameId, tileA);
+    expect(emitted).toEqual([{ gameId, tileId: tileA }]);
+    play.release();
+  });
+
   it("stores actionError on the view model and ignores enablement for the server", () => {
     const play = new PlayLogic();
     play.applyActionError({ error: SocketError.NotYourTurn });
@@ -161,6 +187,33 @@ describe("PlayLogic", () => {
     expect(emitted).toEqual([{ gameId, tileId: tileB }]);
     clock.advance(1000);
     expect(emitted).toHaveLength(1);
+  });
+
+  it("does not time this seat's discard turn when dev mode is on", () => {
+    const emitted: object[] = [];
+    const clock = manualClock();
+    const play = new PlayLogic(
+      {
+        draw() {},
+        discard(payload) {
+          emitted.push(payload);
+        },
+        claim() {},
+        passClaim() {},
+        declareWin() {},
+      },
+      clock,
+    );
+    play.useDevMode(true);
+    play.applySnapshot(inProgressSnapshot(RoundPhase.Discard, 0));
+    expect(play.view.turnRemainingMs).toBeNull();
+    clock.advance(5000);
+    expect(emitted).toEqual([]);
+    play.applyTurn({ currentSeatIndex: 1, phase: RoundPhase.Discard });
+    play.applyTurn({ currentSeatIndex: 0, phase: RoundPhase.Discard });
+    clock.advance(5000);
+    expect(emitted).toEqual([]);
+    expect(play.view.turnRemainingMs).toBeNull();
   });
 
   it("does not auto-discard when the claim window is unlimited or it is not this seat", () => {

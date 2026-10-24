@@ -39,14 +39,24 @@ const locale = useLocale();
 }
 
 li {
-  display: grid;
-  gap: var(--space-sm);
-  padding: var(--space-lg);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4cqw;
+  padding: 0.45cqh 0.8cqw;
+  font-size: clamp(0.75rem, 2.8cqh, 0.95rem);
+}
+
+li strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .score {
   font-variant-numeric: tabular-nums;
-  font-size: 1.15rem;
+  font-size: inherit;
 }
 
 .current {

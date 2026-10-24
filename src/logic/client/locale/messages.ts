@@ -116,6 +116,7 @@ const zhTw: MessageCatalog = {
   [Key.ErrorInvalidClaim]: "不能這樣吃碰槓",
   [Key.ErrorNoClaimWindow]: "現在不能吃碰",
   [Key.ErrorStaleGame]: "這局已經更新",
+  [Key.DevMode]: "開發模式",
 };
 
 const enUs: MessageCatalog = {
@@ -232,6 +233,7 @@ const enUs: MessageCatalog = {
   [Key.ErrorInvalidClaim]: "That claim is not allowed",
   [Key.ErrorNoClaimWindow]: "There is no claim window",
   [Key.ErrorStaleGame]: "This table has moved on",
+  [Key.DevMode]: "Dev mode",
 };
 
 export const messageCatalogs: Record<Locale, MessageCatalog> = {

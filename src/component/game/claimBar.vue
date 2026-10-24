@@ -56,21 +56,21 @@ function win() {
 
 <style scoped>
 .claim-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-md);
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.6cqw;
   align-items: center;
-  padding: var(--space-lg);
-  padding-bottom: calc(var(--space-lg) + env(safe-area-inset-bottom, 0px));
+  padding: 0.6cqh 0.8cqw;
   background: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
 }
 
 .window {
+  grid-column: 1 / -1;
   margin: 0;
-  width: 100%;
   color: var(--color-muted-foreground);
+  font-size: clamp(0.75rem, 2.4cqh, 0.9rem);
   font-variant-numeric: tabular-nums;
 }
 </style>

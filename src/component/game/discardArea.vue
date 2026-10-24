@@ -25,18 +25,21 @@ const locale = useLocale();
 <style scoped>
 .area {
   display: grid;
-  gap: var(--space-md);
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.5cqw;
+  align-items: start;
+  min-height: 0;
 }
 
 .tiles {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-sm);
-  min-height: 3.6rem;
+  min-height: clamp(2.4rem, 8cqh, 3.6rem);
   margin: 0;
   padding: var(--space-md);
   list-style: none;
-  background: rgb(22 101 52 / 0.18);
+  background: rgb(8 64 38 / 0.4);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
 }

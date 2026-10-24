@@ -49,6 +49,10 @@ function submit() {
   align-content: start;
 }
 
+.join-game-form .btn {
+  width: 100%;
+}
+
 .code-input {
   letter-spacing: 0.4em;
   font-size: 1.35rem;

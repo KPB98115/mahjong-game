@@ -33,16 +33,17 @@ const turnSeconds = computed(() =>
 <style scoped>
 .turn-banner {
   margin: 0;
-  padding: var(--space-lg) var(--space-xl);
+  padding: 0.45cqh 1cqw;
   border-radius: var(--radius-lg);
   background: var(--color-muted);
   border: 1px solid var(--color-border);
   color: var(--color-muted-foreground);
+  font-size: clamp(0.8rem, 2.8cqh, 1rem);
 }
 
 .yours {
   color: var(--color-foreground);
   border-color: var(--color-accent);
-  background: rgb(217 119 6 / 0.16);
+  background: rgb(246 194 139 / 0.22);
 }
 </style>

@@ -158,7 +158,8 @@ function abort() {
   display: flex;
   justify-content: space-between;
   gap: var(--space-md);
-  padding: var(--space-lg);
+  padding: 0.5cqh 0.8cqw;
+  font-size: clamp(0.75rem, 2.8cqh, 0.95rem);
 }
 
 .online {
@@ -190,6 +191,10 @@ function abort() {
   flex-wrap: wrap;
   gap: var(--space-md);
   align-items: end;
+}
+
+.bots .btn {
+  flex: 1;
 }
 
 .bots .field {
