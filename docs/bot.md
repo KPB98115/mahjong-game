@@ -1,6 +1,6 @@
 # Bot Players
 
-A three-difficulty bot player implemented as pure server-side logic. Bots integrate with `RoundsLogic` in-process (no Socket.IO or HTTP required), making them usable for integration testing and — with a future socket-server adapter — for filling empty seats in real games.
+A three-difficulty bot player implemented as pure server-side logic. Bots integrate with `RoundsLogic` in-process (no Socket.IO or HTTP required) for integration tests, and with the socket server’s **`BotDriver`** when filling seats at a live table.
 
 ## Files
 
@@ -8,6 +8,8 @@ A three-difficulty bot player implemented as pure server-side logic. Bots integr
 | --- | --- |
 | `src/types/server/botDifficulty.ts` | `BotDifficulty` enum (`low`, `medium`, `smart`) |
 | `src/logic/server/game/bot/botPlayer.ts` | Decision logic: types + `chooseTurnAction` + `chooseClaimAction` |
+| `src/logic/server/game/bot/botContext.ts` | Builds `BotContext` from repos |
+| `socket-server/src/logic/server/botDriver.ts` | After each play action (and on `joinGame` / `gameChanged`), plays the current bot seat |
 | `scripts/playBotHand.ts` | Integration script (two scenarios; in-memory, no DB) |
 | `scripts/tsconfig.json` | tsx path aliases (`void/db` → `scripts/shims/voidDb.ts`) |
 | `scripts/shims/voidDb.ts` | Void runtime shim for script use |
@@ -155,33 +157,12 @@ Expected: game completes within 300 turns.
 
 ---
 
-## Future: Socket Server Integration
+## Socket server (`BotDriver`)
 
-To expose bots as a real feature (player selects "fill with bots" when creating a game) the following additions are needed:
+`POST /api/games/:gameId/bot` seats a bot (`seats.bot_difficulty`). The fourth seat starts the round on the Void HTTP process. Bots have no browser socket, so **`BotDriver`** in `socket-server` must play their turns.
 
-**1. Data model** — store bot difficulty per seat, for example:
+`PlayActions` calls `kickBots` after every committed play action, after Redis `gameChanged` (HTTP deal / add-bot), and when a human **`joinGame`s**. That last kick matters: the HTTP deal auto-draws for the dealer, then nothing else happens until someone joins the socket room.
 
-```sql
-ALTER TABLE game.seats ADD COLUMN bot_difficulty text;  -- null = human
-```
+The running Socket.IO process must be built from this repo (`docker compose up -d --build socket-server`, or `npm run socket:dev`). An old image on `:3001` can accept tickets and still never discard for a bot.
 
-Or a new `game.bot_seats` table keyed on `(game_id, seat_index)` with a `difficulty` column.
-
-**2. API** — extend `POST /api/games` body to accept `{ botSeats: { seatIndex: number, difficulty: BotDifficulty }[] }` and pre-fill those seats with bot user-rows.
-
-**3. Socket server adapter** — after each `PlayOutcome` that contains a `turn` or `drew` emit, check if `nextSeat` is a bot seat. If so, enqueue a bot action through `GameActionQueue`:
-
-```ts
-// Pseudocode in PlayActions.perform (after emit)
-if (isBotSeat(nextSeatIndex)) {
-  queue.enqueue(gameId, async () => {
-    const context = await buildBotContext(repos, gameId, nextSeatIndex, ...);
-    const action = chooseTurnAction(context, difficulty);
-    await playActions.perform(gameId, botUserId, action);
-  });
-}
-```
-
-The same `chooseTurnAction` / `chooseClaimAction` functions are used unchanged; only the surrounding I/O (repo reads, queue) lives in the socket server.
-
-**4. Claim window** — when a discard opens a claim window, iterate bot seats and enqueue their `chooseClaimAction` results immediately (or after a short artificial delay for realism).
+`BotDriver` uses the same `chooseTurnAction` / `chooseClaimAction` as the in-process script, through `GameActionQueue` and `PlayActions`.

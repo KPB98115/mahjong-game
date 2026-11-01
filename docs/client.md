@@ -62,7 +62,7 @@ Use `@media (orientation)`, `@container`, `aspect-ratio`, `dvh` / `dvw`, `cqw` /
 
 JavaScript does not read `innerWidth`, `resize`, or `matchMedia` to lay out the page, and it does not write pixel positions. When a value is data the stylesheet cannot know (claim-window duration, whose turn), logic may set a class or a custom property. The stylesheet still positions the UI.
 
-`pages/layout.vue` is this shell only: frame, backdrop, portrait gate, global CSS. No fetch, no socket, no game rules. Page files stay the routes in the table above.
+`pages/layout.vue` is this shell plus the gear menu (locale, dev mode, abort). It does not fetch the snapshot or speak the play socket. Page files stay the routes in the table above.
 
 ## SSR then hydrate (locked)
 
@@ -228,17 +228,54 @@ SSR: table chrome, `uuid` unused in the visible tree until hydrate. Panel from `
 
 `playTable.vue` lazy-loads:
 
-- `handTiles.vue` — own concealed hand (`HandTileModel`). Face is the **`tileCode` text** (`bam_5`, `east`, …), not an image.
-- `discardArea.vue`
-- `meldArea.vue`
-- `flowerArea.vue`
+- `liveWall.vue` — remaining wall as face-down stacks (`cover.svg`). Layout is `wallLayout.ts`. See [Live wall](#live-wall).
+- `seatZone.vue` — one seat: concealed hand or cover wall, flowers and melds on that player’s left, discards in front
+- `handTiles.vue` — own concealed hand (`HandTileModel`). Face is an SVG under `src/static/tiles/`.
+- `tableCenter.vue` — compass: round wind, `wallRemainingCount`, timer, whose turn
 - `claimBar.vue` — claim / pass / hu during the window
-- `turnBanner.vue`
-- `seatRail.vue` — four seats, scores, presence
+- `tableMenu.vue` — locale, dev mode, abort; mounted from `pages/layout.vue` so it works on every page
 
-Play actions (only through `PlayLogic` → `SocketLogic`): `draw` if `autoDraw === false`, `discard`, `claim`, `passClaim`, `declareWin`. `discard` / `claim` always include `gameId` (the page `uuid`). **Abort** on the play table is HTTP (`GamesLogic.abort`), same as waiting.
+Play actions (only through `PlayLogic` → `SocketLogic`): `draw` if `autoDraw === false`, `discard`, `claim`, `passClaim`, `declareWin`. `discard` / `claim` always include `gameId` (the page `uuid`). **Abort** is HTTP (`GamesLogic.abort`) from the gear menu.
 
 `roundResult.vue`: `ScoreboardModel`, next-wind control. All four agree → response has a **new** `gameId` → `GamePageLogic` `visit`s `/game/{newId}` (socket leaves the old room on the next page’s `joinGame`).
+
+## Live wall
+
+The remaining wall is a picture of the ordered `wall_tiles` rows, not a second copy of the concealed hands.
+
+The opening is the existing deal, not a dice break. `RoundsLogic.start` shuffles `wallTileCount` (144) tiles, deals `handTileCount * 4` from the front (Hong Kong 52, Taiwan 64), and stores the rest with `sortIndex` starting at that cursor. Normal draws take the lowest index. Flower and kong replacements take the highest. What remains is one continuous range.
+
+```text
+0 … dealCursor-1     opening (dealt, then drawn from the head)
+dealCursor … tail    standing, until the head and tail move in
+tail+1 … 143         replacement end
+```
+
+### Snapshot
+
+`round` on `gameSnapshotSchema` / `publicState` includes:
+
+| Field | Meaning |
+| --- | --- |
+| `wallRemainingCount` | Standing tiles; the compass still uses this |
+| `wallHeadSortIndex` | Lowest remaining `sortIndex`, or `null` when the wall is empty |
+| `wallTailSortIndex` | Highest remaining `sortIndex`, or `null` when the wall is empty |
+
+`loadGameSnapshot` reads the wall ordered by `sortIndex` and sets head / tail from the first and last row. It never publishes a wall `tileCode`. Cached public state that fails the schema is ignored and rebuilt from Postgres.
+
+`PlayLogic.applyTurn` does not need the indexes. The picture updates when `publicState` arrives (draw, discard, claim, kong).
+
+### Client layout
+
+`src/logic/client/game/wallLayout.ts` maps slots `0..143` onto four sides of 18 stacks of 2, relative to the dealer, then rotates them with `TableSide` so the viewer stays at the bottom.
+
+- Slots before the head are the opening.
+- Slots from head through tail are standing. A stack shows two covers, one cover, or a gap.
+- Slots after the tail are the replacement end.
+
+`liveWall.vue` renders those stacks inside the felt with `cover.svg`, clear of the hands, compass, gear, and discard button. On a phone landscape screen the stack size comes from the felt so 18 fit along a side.
+
+Tests: `src/test/wallSnapshot.test.ts` (deal, head draw, tail take, empty wall) and `src/test/client/wallLayout.test.ts` (Hong Kong vs Taiwan opening, opposite ends, dealer side).
 
 ## Client types (`src/types/client`)
 
@@ -254,7 +291,7 @@ Wire enums stay in `src/types/server` and are imported by client logic and `src/
 ## Files (not written)
 
 ```text
-pages/layout.vue                   # shell: 16:9 frame, portrait gate, global CSS
+pages/layout.vue                   # shell: 16:9 frame, portrait gate, gear menu
 pages/index.server.ts              # redirect / → /register
 pages/register.vue
 pages/register.server.ts
@@ -269,6 +306,7 @@ src/logic/client/auth/authLogic.ts
 src/logic/client/game/gamesLogic.ts
 src/logic/client/game/socketLogic.ts
 src/logic/client/game/playLogic.ts
+src/logic/client/game/wallLayout.ts
 src/logic/client/game/gamePageLogic.ts
 src/logic/client/register/registerLogic.ts
 
@@ -281,7 +319,7 @@ src/component/game/…
 src/types/client/gamePanel.ts
 ```
 
-Tile faces are `tileCode` text on every tile widget (hand, discard, meld, flower, draw). Image art under `src/static/` is later; do not block play on it.
+Tile faces are SVGs under `src/static/tiles/` (`tileCode.svg`). Concealed hands and the live wall use `cover.svg`.
 
 ## Locked (this slice)
 
@@ -295,11 +333,12 @@ Tile faces are `tileCode` text on every tile widget (hand, discard, meld, flower
 - Join still happens on `/register` (`POST /api/games/join`). The game page is seated-only.
 - `referenceCode` is a 5-digit `0`–`9` string (client and server; no regex).
 - One seat per user (server). Abort on waiting and play dissolves the table (`POST .../abort`); no single-player leave.
-- Tile widgets render `tileCode` as text.
+- Tile widgets render SVG faces; the live wall and concealed opponent hands use `cover.svg`.
 - Mobile-first PWA. One horizontal layout. Desktop is that layout inside a 16:9 frame. RWD and the portrait gate are CSS; JavaScript does not size the viewport.
-- `pages/layout.vue` is the shell only (frame, backdrop, rotate prompt). No fetch, socket, or game rules there.
+- `pages/layout.vue` is the shell (frame, backdrop, rotate prompt) plus the gear menu (locale, dev mode, abort).
 - Create-form integers: type only on the client; domain limits stay in `GamesLogic`.
+- The live wall uses only `wallHeadSortIndex` / `wallTailSortIndex` / `handTileCount` / dealer seat. Wall tile codes never leave the server.
 
 ## Open (client)
 
-- Tile **image** art under `src/static/` (text faces until then).
+- A dice break that moves the deal cursor (today the opening is `handTileCount * 4` from slot 0).

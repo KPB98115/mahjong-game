@@ -2,8 +2,30 @@ import { type GameSnapshot } from "../../model/server/gameSnapshot";
 import { DiscardWinPayer } from "../../types/server/discardWinPayer";
 import { GameStatus } from "../../types/server/gameStatus";
 import { PrevailingWind } from "../../types/server/prevailingWind";
+import { type RoundPhase } from "../../types/server/roundPhase";
+import { type RoundResultType } from "../../types/server/roundResultType";
 import { Ruleset } from "../../types/server/ruleset";
 import { ScoreUnit } from "../../types/server/scoreUnit";
+import { type WinKind } from "../../types/server/winKind";
+
+export function playRound(overrides: {
+  phase: RoundPhase;
+  currentSeatIndex: number;
+  resultType?: RoundResultType | null;
+  winKind?: WinKind | null;
+  wallRemainingCount?: number;
+  wallHeadSortIndex?: number | null;
+  wallTailSortIndex?: number | null;
+}): NonNullable<GameSnapshot["round"]> {
+  return {
+    resultType: null,
+    winKind: null,
+    wallRemainingCount: 80,
+    wallHeadSortIndex: 52,
+    wallTailSortIndex: 131,
+    ...overrides,
+  };
+}
 
 export function waitingSnapshot(
   overrides: {

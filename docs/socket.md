@@ -36,7 +36,7 @@ Shared helpers in `socket-server/src/logic/server/`:
 | --- | --- | --- | --- |
 | `SocketAuthHandler` | `socketAuthHandler.ts` | handshake `auth.ticket` | Redis `GETDEL` `auth:socket_ticket:{ticket}`. Invalid → disconnect `unauthorized`. Store `userId` on the socket. |
 | `PingHandler` | `pingHandler.ts` | `ping` | Emit `pong`. No logic/repo. |
-| `JoinGameHandler` | `joinGameHandler.ts` | `joinGame` | `RoundsLogic.snapshotForSeat` (checks the seat). Leave the previous game's rooms, join the game and seat rooms, store `gameId` / `seatIndex` on the socket. Emit `joined`, `selfHand`, `publicState`, `presence`. If the round is in `claim` / `robKong` and no timer runs (e.g. after a restart), re-arm it. |
+| `JoinGameHandler` | `joinGameHandler.ts` | `joinGame` | `RoundsLogic.snapshotForSeat` (checks the seat). Leave the previous game's rooms, join the game and seat rooms, store `gameId` / `seatIndex` on the socket. Emit `joined`, `selfHand`, `publicState`, `presence`. If the round is in `claim` / `robKong` and no timer runs (e.g. after a restart), re-arm it. Then `PlayActions.kickBots` so a dealer bot discards after an HTTP deal. |
 | `DrawHandler` | `drawHandler.ts` | `draw` | `RoundsLogic.draw({ gameId, userId })` |
 | `DiscardHandler` | `discardHandler.ts` | `discard` | `RoundsLogic.discard({ gameId, userId, tileId })`. The `claimWindow` emit starts the timer. |
 | `ClaimHandler` | `claimHandler.ts` | `claim` | `RoundsLogic.claim({ gameId, userId, kind, tileIds })` |
@@ -121,7 +121,7 @@ Concealed kong / added kong: still `claim` with `kind: "kong"` while it is your 
 
 | Event | Payload | Meaning |
 | --- | --- | --- |
-| `publicState` | Snapshot minus other hands: seats, phase, currentSeatIndex, wallCount, discards, melds, flowers, nextWindAgreed | After join and after any mutating action |
+| `publicState` | Snapshot minus other hands: seats, phase, currentSeatIndex, `wallRemainingCount`, `wallHeadSortIndex`, `wallTailSortIndex` (no wall tile codes), discards, melds, flowers, nextWindAgreed | After join and after any mutating action |
 | `discarded` | `{ seatIndex, tileCode, tileId }` | A discard was committed |
 | `claimWindow` | `{ discardSeatIndex, tileCode, timeoutMs }` | `timeoutMs` is `5000`, `10000`, or `null` (unlimited) |
 | `claimed` | `{ seatIndex, kind, tileCodes[] }` | Meld committed |

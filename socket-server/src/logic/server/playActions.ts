@@ -53,6 +53,10 @@ export class PlayActions {
     }
     this.emitter.deliver(outcome.result);
     this.coordinator.sync(outcome.result);
-    this.advanceBots(outcome.result.gameId);
+    this.kickBots(outcome.result.gameId);
+  }
+
+  kickBots(gameId: string): void {
+    this.advanceBots(gameId);
   }
 }

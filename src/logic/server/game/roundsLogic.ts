@@ -47,7 +47,7 @@ import { type PlannedPayment, type ScorePaymentsLogic } from "./scorePaymentsLog
 import { scoringChartFor } from "./scoringChart";
 import { type SeatRow } from "./seatsRepo";
 import { type GameTransaction } from "./seatsLogic";
-import { standardWallTileCodes } from "./wallTileCodes";
+import { standardWallTileCodes, wallTileCount } from "./wallTileCodes";
 import { type WallTilesLogic } from "./wallTilesLogic";
 
 export type RoundsLogicDeps = {
@@ -101,7 +101,6 @@ type DrawnTile = {
   flowerCodes: string[];
 };
 
-const wallSize = 144;
 const seatCount = 4;
 
 export class RoundsLogic {
@@ -114,7 +113,7 @@ export class RoundsLogic {
     tx: DbExecutor;
   }): Promise<void> {
     const { game, dealerSeatIndex, now, tx } = input;
-    if (game.handTileCount * seatCount + 1 > wallSize) {
+    if (game.handTileCount * seatCount + 1 > wallTileCount) {
       throw new Error("hand does not fit in the wall");
     }
     const { repos, handsLogic, handTilesLogic, wallTilesLogic } = this.deps;

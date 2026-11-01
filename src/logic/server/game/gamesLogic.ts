@@ -17,6 +17,7 @@ import {
   lockedChowOnlyFromPrevious,
   scoreUnitForRuleset,
 } from "./rulesetScore";
+import { wallTileCount } from "./wallTileCodes";
 import { type DbExecutor } from "../db/executor";
 import { uniqueConstraintName } from "../db/uniqueViolation";
 import { apiFailure } from "../http/apiFailure";
@@ -51,7 +52,6 @@ export type GameRules = {
 
 type Preset = Omit<GameRules, "ruleset">;
 
-const wallSize = 144;
 const referenceAttempts = 8;
 
 const presets: Record<Ruleset, Preset> = {
@@ -352,7 +352,11 @@ function rulesFromBody(body: CreateGameBody): GameRules | undefined {
   const handTileCount = body.handTileCount ?? preset.handTileCount;
   const winMeldCount = body.winMeldCount ?? preset.winMeldCount;
   const minScoreUnits = body.minScoreUnits ?? defaultMinScoreUnits(body.ruleset);
-  if (!Number.isInteger(handTileCount) || handTileCount < 1 || handTileCount * 4 + 1 > wallSize) {
+  if (
+    !Number.isInteger(handTileCount) ||
+    handTileCount < 1 ||
+    handTileCount * 4 + 1 > wallTileCount
+  ) {
     return undefined;
   }
   if (!Number.isInteger(winMeldCount) || winMeldCount < 1) {

@@ -47,6 +47,8 @@ const roundSchema = z.object({
   resultType: z.enum(RoundResultType).nullable(),
   winKind: z.enum(WinKind).nullable(),
   wallRemainingCount: z.number(),
+  wallHeadSortIndex: z.number().nullable(),
+  wallTailSortIndex: z.number().nullable(),
 });
 
 export const roundScoreSchema = z.object({

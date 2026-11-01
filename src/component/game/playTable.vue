@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import ClaimBar from "./claimBar.vue";
+import LiveWall from "./liveWall.vue";
 import SeatZone from "./seatZone.vue";
 import TableCenter from "./tableCenter.vue";
 import {
@@ -172,6 +173,14 @@ function takeTurn() {
       {{ locale.errorLabel(play.view.error) }}
     </p>
     <div class="felt">
+      <LiveWall
+        v-if="play.round != null"
+        :self-seat-index="play.selfSeatIndex ?? 0"
+        :dealer-seat-index="snapshot.game.dealerSeatIndex ?? 0"
+        :hand-tile-count="snapshot.game.handTileCount"
+        :wall-head-sort-index="play.round.wallHeadSortIndex"
+        :wall-tail-sort-index="play.round.wallTailSortIndex"
+      />
       <p class="sr-only" aria-live="polite">{{ suggestedText }}</p>
       <article
         v-for="seat in seats"

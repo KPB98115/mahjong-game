@@ -4,7 +4,7 @@ import { MeldType } from "../../types/server/meldType";
 import { RoundPhase } from "../../types/server/roundPhase";
 import { SocketError } from "../../types/server/socketError";
 import { GameStatus } from "../../types/server/gameStatus";
-import { waitingSnapshot } from "./snapshotFixture";
+import { playRound, waitingSnapshot } from "./snapshotFixture";
 
 const gameId = "11111111-1111-4111-8111-111111111111";
 const tileA = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -12,13 +12,7 @@ const tileB = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 
 function inProgressSnapshot(phase: RoundPhase, currentSeatIndex: number, autoDraw = true) {
   const snapshot = waitingSnapshot({ gameId, status: GameStatus.InProgress });
-  snapshot.round = {
-    phase,
-    currentSeatIndex,
-    resultType: null,
-    winKind: null,
-    wallRemainingCount: 80,
-  };
+  snapshot.round = playRound({ phase, currentSeatIndex });
   snapshot.game.autoDraw = autoDraw;
   snapshot.game.dealerSeatIndex = 0;
   snapshot.self = {

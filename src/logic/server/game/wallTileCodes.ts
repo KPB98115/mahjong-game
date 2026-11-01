@@ -8,6 +8,8 @@ import {
   windOrder,
 } from "./tileCode";
 
+export const wallTileCount = 144;
+
 export function standardWallTileCodes(): string[] {
   const codes: string[] = [];
   for (const suit of suitOrder) {
