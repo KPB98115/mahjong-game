@@ -58,7 +58,10 @@ export class PlayLogic {
   private pendingDiscardTileId: string | null = null;
   private turnLimitMs: number | null = null;
   private deadlineMs: number | null = null;
+  private claimDeadlineMs: number | null = null;
+  private devMode = false;
   private stopClock: (() => void) | null = null;
+  private stopClaimClock: (() => void) | null = null;
   private discardSent = false;
 
   constructor(
@@ -82,6 +85,10 @@ export class PlayLogic {
     return this.isSelfTurn(RoundPhase.Discard);
   }
 
+  get canPressDiscard(): boolean {
+    return this.canDiscard && this.view.selectedTileIds.length <= 1;
+  }
+
   get canClaim(): boolean {
     return this.round?.phase === RoundPhase.Claim || this.canDiscard;
   }
@@ -102,6 +109,10 @@ export class PlayLogic {
     this.publicTiles = snapshot.publicTiles;
     this.selfSeatIndex = snapshot.self?.seatIndex ?? null;
     this.hand = snapshot.self?.handTiles ?? [];
+    const phase = snapshot.round?.phase;
+    if (phase !== RoundPhase.Claim && phase !== RoundPhase.RobKong) {
+      this.clearClaimWindow();
+    }
     this.syncTurnClock();
   }
 
@@ -162,10 +173,13 @@ export class PlayLogic {
 
   applyClaimWindow(payload: ClaimWindowPayload): void {
     this.view.claimTimeoutMs = payload.timeoutMs;
+    this.view.claimDiscardSeatIndex = payload.discardSeatIndex;
+    this.view.claimTileCode = payload.tileCode;
+    this.syncClaimClock();
   }
 
   applyClaimed(payload: ClaimedPayload): void {
-    this.view.claimTimeoutMs = null;
+    this.clearClaimWindow();
     this.publicTiles = {
       ...this.publicTiles,
       melds: [
@@ -187,6 +201,9 @@ export class PlayLogic {
   }
 
   applyTurn(payload: TurnPayload): void {
+    if (payload.phase !== RoundPhase.Claim && payload.phase !== RoundPhase.RobKong) {
+      this.clearClaimWindow();
+    }
     if (this.round == null) {
       this.round = {
         phase: payload.phase,
@@ -207,7 +224,7 @@ export class PlayLogic {
   }
 
   applyRoundEnded(payload: RoundEndedPayload): void {
-    this.view.claimTimeoutMs = null;
+    this.clearClaimWindow();
     this.stopTurnClock();
     this.discardSent = false;
     this.view.turnRemainingMs = null;
@@ -253,7 +270,7 @@ export class PlayLogic {
   }
 
   discard(gameId: string): void {
-    if (!this.canDiscard || this.view.selectedTileIds.length !== 1) {
+    if (!this.canPressDiscard || this.view.selectedTileIds.length !== 1) {
       return;
     }
     const tileId = this.view.selectedTileIds[0];
@@ -263,20 +280,34 @@ export class PlayLogic {
     this.sendDiscard(gameId, tileId);
   }
 
+  discardTile(gameId: string, tileId: string): void {
+    if (!this.canPressDiscard || !this.hand.some((tile) => tile.id === tileId)) {
+      return;
+    }
+    this.sendDiscard(gameId, tileId);
+  }
+
   release(): void {
     this.stopTurnClock();
+    this.stopClaimTicker();
     this.discardSent = true;
     this.view.turnRemainingMs = null;
   }
 
-  claim(gameId: string, kind: MeldType): void {
+  useDevMode(enabled: boolean): void {
+    this.devMode = enabled;
+    this.syncTurnClock();
+    this.syncClaimClock();
+  }
+
+  claim(gameId: string, kind: MeldType, tileIds?: string[]): void {
     if (!this.canClaim) {
       return;
     }
     const parsed = claimActionSchema.safeParse({
       gameId,
       kind,
-      tileIds: this.view.selectedTileIds,
+      tileIds: tileIds ?? this.view.selectedTileIds,
     });
     if (!parsed.success) {
       return;
@@ -320,7 +351,7 @@ export class PlayLogic {
   }
 
   private syncTurnClock(): void {
-    const timing = this.isSelfTurn(RoundPhase.Discard) && this.turnLimitMs != null;
+    const timing = !this.devMode && this.isSelfTurn(RoundPhase.Discard) && this.turnLimitMs != null;
     if (!timing) {
       this.stopTurnClock();
       this.discardSent = false;
@@ -358,10 +389,51 @@ export class PlayLogic {
     this.sendDiscard(this.gameId, tile.id);
   }
 
+  private syncClaimClock(): void {
+    const timing =
+      !this.devMode && this.view.claimTimeoutMs != null && this.view.claimTimeoutMs > 0;
+    if (!timing) {
+      this.stopClaimTicker();
+      return;
+    }
+    if (this.stopClaimClock != null || this.view.claimTimeoutMs == null) {
+      return;
+    }
+    this.claimDeadlineMs = this.clock.now() + this.view.claimTimeoutMs;
+    this.stopClaimClock = this.clock.every(turnTickMs, () => {
+      this.onClaimTick();
+    });
+  }
+
+  private onClaimTick(): void {
+    if (this.claimDeadlineMs == null) {
+      return;
+    }
+    const remaining = Math.max(0, this.claimDeadlineMs - this.clock.now());
+    this.view.claimTimeoutMs = remaining;
+    if (remaining > 0) {
+      return;
+    }
+    this.stopClaimTicker();
+  }
+
+  private clearClaimWindow(): void {
+    this.stopClaimTicker();
+    this.view.claimTimeoutMs = null;
+    this.view.claimDiscardSeatIndex = null;
+    this.view.claimTileCode = null;
+  }
+
   private stopTurnClock(): void {
     this.stopClock?.();
     this.stopClock = null;
     this.deadlineMs = null;
+  }
+
+  private stopClaimTicker(): void {
+    this.stopClaimClock?.();
+    this.stopClaimClock = null;
+    this.claimDeadlineMs = null;
   }
 
   private isSelfTurn(phase: RoundPhase): boolean {

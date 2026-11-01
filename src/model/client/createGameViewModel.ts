@@ -4,6 +4,11 @@ import { type DiscardWinPayer } from "../../types/server/discardWinPayer";
 import { type JsonValue } from "../../types/server/jsonValue";
 import { Ruleset } from "../../types/server/ruleset";
 import { type ScoreUnit } from "../../types/server/scoreUnit";
+import {
+  defaultMinScoreUnits,
+  lockedChowOnlyFromPrevious,
+  scoreUnitForRuleset,
+} from "../../logic/server/game/rulesetScore";
 
 export type CreateGameDefaults = {
   autoDraw: boolean;
@@ -12,7 +17,7 @@ export type CreateGameDefaults = {
 
 export type CreateGameViewModel = {
   ruleset: Ruleset;
-  scoreUnit: ScoreUnit | undefined;
+  scoreUnit: ScoreUnit;
   discardWinPayer: DiscardWinPayer | undefined;
   claimWindowMs: ClaimWindowMs | null;
   autoDraw: boolean;
@@ -21,6 +26,7 @@ export type CreateGameViewModel = {
   handTileCount: number | undefined;
   winMeldCount: number | undefined;
   minScoreUnits: number | undefined;
+  minScoreTouched: boolean;
   claimWindowTouched: boolean;
   autoDrawTouched: boolean;
   bonusTilesTouched: boolean;
@@ -28,9 +34,10 @@ export type CreateGameViewModel = {
 };
 
 export function emptyCreateGameViewModel(defaults: CreateGameDefaults): CreateGameViewModel {
+  const ruleset = Ruleset.HongKong;
   return {
-    ruleset: Ruleset.HongKong,
-    scoreUnit: undefined,
+    ruleset,
+    scoreUnit: scoreUnitForRuleset(ruleset),
     discardWinPayer: undefined,
     claimWindowMs: defaults.claimWindowMs,
     autoDraw: defaults.autoDraw,
@@ -38,7 +45,8 @@ export function emptyCreateGameViewModel(defaults: CreateGameDefaults): CreateGa
     chowOnlyFromPrevious: true,
     handTileCount: undefined,
     winMeldCount: undefined,
-    minScoreUnits: undefined,
+    minScoreUnits: defaultMinScoreUnits(ruleset),
+    minScoreTouched: false,
     claimWindowTouched: false,
     autoDrawTouched: false,
     bonusTilesTouched: false,
@@ -46,11 +54,23 @@ export function emptyCreateGameViewModel(defaults: CreateGameDefaults): CreateGa
   };
 }
 
-export function createGameWireBody(view: CreateGameViewModel): JsonValue {
-  const body: { [key: string]: JsonValue } = { ruleset: view.ruleset };
-  if (view.scoreUnit != null) {
-    body.scoreUnit = view.scoreUnit;
+export function selectRuleset(view: CreateGameViewModel, ruleset: Ruleset): void {
+  view.ruleset = ruleset;
+  view.scoreUnit = scoreUnitForRuleset(ruleset);
+  const lockedChow = lockedChowOnlyFromPrevious(ruleset);
+  if (lockedChow != null) {
+    view.chowOnlyFromPrevious = lockedChow;
   }
+  if (!view.minScoreTouched) {
+    view.minScoreUnits = defaultMinScoreUnits(ruleset);
+  }
+}
+
+export function createGameWireBody(view: CreateGameViewModel): JsonValue {
+  const body: { [key: string]: JsonValue } = {
+    ruleset: view.ruleset,
+    scoreUnit: view.scoreUnit,
+  };
   if (view.discardWinPayer != null) {
     body.discardWinPayer = view.discardWinPayer;
   }
@@ -63,7 +83,10 @@ export function createGameWireBody(view: CreateGameViewModel): JsonValue {
   if (view.bonusTilesTouched && view.bonusTilesEnabled != null) {
     body.bonusTilesEnabled = view.bonusTilesEnabled;
   }
-  if (view.chowTouched && view.chowOnlyFromPrevious != null) {
+  const lockedChow = lockedChowOnlyFromPrevious(view.ruleset);
+  if (lockedChow != null) {
+    body.chowOnlyFromPrevious = lockedChow;
+  } else if (view.chowTouched && view.chowOnlyFromPrevious != null) {
     body.chowOnlyFromPrevious = view.chowOnlyFromPrevious;
   }
   if (view.handTileCount != null) {

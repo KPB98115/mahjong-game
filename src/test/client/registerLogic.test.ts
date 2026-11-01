@@ -8,6 +8,7 @@ import { ApiError, HttpStatus } from "../../types/server/api";
 import { GameStatus } from "../../types/server/gameStatus";
 import { PrevailingWind } from "../../types/server/prevailingWind";
 import { Ruleset } from "../../types/server/ruleset";
+import { ScoreUnit } from "../../types/server/scoreUnit";
 import { UserAttributeName } from "../../types/server/profile";
 import { createFakeFetch, failedBody, successBody } from "./fakeApi";
 import { waitingSnapshot } from "./snapshotFixture";
@@ -128,7 +129,7 @@ describe("RegisterLogic", () => {
     expect(fetchFn.calls.some((call) => call.path === "/api/games/join")).toBe(false);
   });
 
-  it("omits unchanged optional create fields and visits the new game", async () => {
+  it("sends locked Hong Kong fields with a changed hand size and visits the new game", async () => {
     const snapshot = waitingSnapshot({ gameId: "game-created" });
     const fetchFn = createFakeFetch([
       {
@@ -156,6 +157,9 @@ describe("RegisterLogic", () => {
     await logic.create();
     expect(fetchFn.calls.at(-1)?.body).toEqual({
       ruleset: Ruleset.HongKong,
+      scoreUnit: ScoreUnit.Fan,
+      chowOnlyFromPrevious: true,
+      minScoreUnits: 3,
       handTileCount: 16,
     });
     expect(visits).toEqual(["/game/game-created"]);

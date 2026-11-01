@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { tileFaceFileName } from "../../logic/client/game/tileFace";
+import { tileCoverSrc, tileFaceFileName } from "../../logic/client/game/tileFace";
 import { DragonTile, FlowerTile, SeasonTile, TileSuit, WindTile } from "../../types/server/tile";
 
 describe("tileFaceFileName", () => {
@@ -25,6 +25,10 @@ describe("tileFaceFileName", () => {
     for (const [code, fileName] of expected) {
       expect(tileFaceFileName(code)).toBe(fileName);
     }
+  });
+
+  it("loads the face-down cover used by the wall", () => {
+    expect(tileCoverSrc()?.length).toBeGreaterThan(0);
   });
 
   it("falls back to no image for an unknown code", () => {

@@ -13,7 +13,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   copied: [];
   addBot: [];
-  abort: [];
 }>();
 
 const locale = useLocale();
@@ -26,10 +25,6 @@ async function copyCode() {
 
 function addBot() {
   emit("addBot");
-}
-
-function abort() {
-  emit("abort");
 }
 </script>
 
@@ -99,9 +94,6 @@ function abort() {
       <button class="btn" type="submit" :disabled="model.pending || snapshot.seats.length >= 4">
         {{ locale.text(model.pending ? MessageKey.Adding : MessageKey.AddBot) }}
       </button>
-      <button class="btn btn-danger" type="button" :disabled="model.pending" @click="abort">
-        {{ locale.text(MessageKey.AbortTable) }}
-      </button>
     </form>
     <p v-if="model.error" class="error" role="alert">{{ locale.errorLabel(model.error) }}</p>
   </section>
@@ -158,7 +150,8 @@ function abort() {
   display: flex;
   justify-content: space-between;
   gap: var(--space-md);
-  padding: var(--space-lg);
+  padding: 0.5cqh 0.8cqw;
+  font-size: clamp(0.75rem, 2.8cqh, 0.95rem);
 }
 
 .online {
@@ -190,6 +183,10 @@ function abort() {
   flex-wrap: wrap;
   gap: var(--space-md);
   align-items: end;
+}
+
+.bots .btn {
+  flex: 1;
 }
 
 .bots .field {

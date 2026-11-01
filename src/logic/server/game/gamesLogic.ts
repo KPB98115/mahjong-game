@@ -11,7 +11,12 @@ import { DiscardWinPayer } from "../../../types/server/discardWinPayer";
 import { GameStatus } from "../../../types/server/gameStatus";
 import { PrevailingWind } from "../../../types/server/prevailingWind";
 import { Ruleset } from "../../../types/server/ruleset";
-import { ScoreUnit } from "../../../types/server/scoreUnit";
+import { type ScoreUnit } from "../../../types/server/scoreUnit";
+import {
+  defaultMinScoreUnits,
+  lockedChowOnlyFromPrevious,
+  scoreUnitForRuleset,
+} from "./rulesetScore";
 import { type DbExecutor } from "../db/executor";
 import { uniqueConstraintName } from "../db/uniqueViolation";
 import { apiFailure } from "../http/apiFailure";
@@ -53,10 +58,10 @@ const presets: Record<Ruleset, Preset> = {
   [Ruleset.HongKong]: {
     handTileCount: 13,
     winMeldCount: 4,
-    scoreUnit: ScoreUnit.Fan,
+    scoreUnit: scoreUnitForRuleset(Ruleset.HongKong),
     bonusTilesEnabled: true,
     chowOnlyFromPrevious: true,
-    minScoreUnits: 0,
+    minScoreUnits: defaultMinScoreUnits(Ruleset.HongKong),
     discardWinPayer: DiscardWinPayer.Discarder,
     autoDraw: true,
     claimWindowMs: ClaimWindowMs.FiveSeconds,
@@ -64,10 +69,10 @@ const presets: Record<Ruleset, Preset> = {
   [Ruleset.Taiwan]: {
     handTileCount: 16,
     winMeldCount: 5,
-    scoreUnit: ScoreUnit.Tai,
+    scoreUnit: scoreUnitForRuleset(Ruleset.Taiwan),
     bonusTilesEnabled: true,
     chowOnlyFromPrevious: true,
-    minScoreUnits: 0,
+    minScoreUnits: defaultMinScoreUnits(Ruleset.Taiwan),
     discardWinPayer: DiscardWinPayer.Discarder,
     autoDraw: true,
     claimWindowMs: ClaimWindowMs.FiveSeconds,
@@ -346,7 +351,7 @@ function rulesFromBody(body: CreateGameBody): GameRules | undefined {
   const preset = presets[body.ruleset];
   const handTileCount = body.handTileCount ?? preset.handTileCount;
   const winMeldCount = body.winMeldCount ?? preset.winMeldCount;
-  const minScoreUnits = body.minScoreUnits ?? preset.minScoreUnits;
+  const minScoreUnits = body.minScoreUnits ?? defaultMinScoreUnits(body.ruleset);
   if (!Number.isInteger(handTileCount) || handTileCount < 1 || handTileCount * 4 + 1 > wallSize) {
     return undefined;
   }
@@ -360,9 +365,12 @@ function rulesFromBody(body: CreateGameBody): GameRules | undefined {
     ruleset: body.ruleset,
     handTileCount,
     winMeldCount,
-    scoreUnit: body.scoreUnit ?? preset.scoreUnit,
+    scoreUnit: scoreUnitForRuleset(body.ruleset),
     bonusTilesEnabled: body.bonusTilesEnabled ?? preset.bonusTilesEnabled,
-    chowOnlyFromPrevious: body.chowOnlyFromPrevious ?? preset.chowOnlyFromPrevious,
+    chowOnlyFromPrevious:
+      lockedChowOnlyFromPrevious(body.ruleset) ??
+      body.chowOnlyFromPrevious ??
+      preset.chowOnlyFromPrevious,
     minScoreUnits,
     discardWinPayer: body.discardWinPayer ?? preset.discardWinPayer,
     autoDraw: body.autoDraw ?? preset.autoDraw,

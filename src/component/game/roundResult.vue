@@ -67,6 +67,10 @@ function nextWind() {
   overflow: auto;
 }
 
+.round-result .btn {
+  width: 100%;
+}
+
 .kind {
   color: var(--color-muted-foreground);
   text-transform: capitalize;

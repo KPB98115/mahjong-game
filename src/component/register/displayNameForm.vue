@@ -43,7 +43,11 @@ function submit() {
   display: grid;
   gap: var(--space-lg);
   align-content: start;
-  width: min(100%, 28rem);
+  width: min(100%, 36rem);
   justify-self: center;
+}
+
+.display-name-form .btn {
+  width: 100%;
 }
 </style>

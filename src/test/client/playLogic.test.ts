@@ -77,6 +77,34 @@ describe("PlayLogic", () => {
     play.selectedTileIds = [tileA, tileB];
     play.claim(gameId, MeldType.Chow);
     expect(emitted[1]).toEqual({ gameId, kind: MeldType.Chow, tileIds: [tileA, tileB] });
+    play.claim(gameId, MeldType.Pong, [tileA]);
+    expect(emitted[2]).toEqual({ gameId, kind: MeldType.Pong, tileIds: [tileA] });
+  });
+
+  it("discards a double-clicked tile and refuses discard while several tiles are selected", () => {
+    const emitted: object[] = [];
+    const play = new PlayLogic({
+      draw() {},
+      discard(payload) {
+        emitted.push(payload);
+      },
+      claim() {},
+      passClaim() {},
+      declareWin() {},
+    });
+    play.applySnapshot(inProgressSnapshot(RoundPhase.Discard, 0));
+    expect(play.canPressDiscard).toBe(true);
+    play.discardTile(gameId, tileA);
+    expect(emitted).toEqual([{ gameId, tileId: tileA }]);
+    play.applyTurn({ currentSeatIndex: 1, phase: RoundPhase.Draw });
+    play.applyTurn({ currentSeatIndex: 0, phase: RoundPhase.Discard });
+    play.toggleTile(tileA);
+    play.toggleTile(tileB);
+    expect(play.canPressDiscard).toBe(false);
+    play.discard(gameId);
+    play.discardTile(gameId, tileA);
+    expect(emitted).toEqual([{ gameId, tileId: tileA }]);
+    play.release();
   });
 
   it("stores actionError on the view model and ignores enablement for the server", () => {
@@ -85,13 +113,40 @@ describe("PlayLogic", () => {
     expect(play.view.error).toBe(SocketError.NotYourTurn);
   });
 
-  it("records a claim window timeout for display only", () => {
-    const play = new PlayLogic();
+  it("counts down a claim window without discarding", () => {
+    const emitted: object[] = [];
+    const clock = manualClock();
+    const play = new PlayLogic(
+      {
+        draw() {},
+        discard(payload) {
+          emitted.push(payload);
+        },
+        claim() {},
+        passClaim() {},
+        declareWin() {},
+      },
+      clock,
+    );
     play.applySnapshot(inProgressSnapshot(RoundPhase.Claim, 1));
     play.applyClaimWindow({ discardSeatIndex: 1, tileCode: "east", timeoutMs: 5000 });
     expect(play.view.claimTimeoutMs).toBe(5000);
+    expect(play.view.claimTileCode).toBe("east");
+    expect(play.view.claimDiscardSeatIndex).toBe(1);
+    clock.advance(2000);
+    expect(play.view.claimTimeoutMs).toBe(3000);
+    expect(emitted).toEqual([]);
     play.applyClaimWindow({ discardSeatIndex: 1, tileCode: "east", timeoutMs: null });
     expect(play.view.claimTimeoutMs).toBeNull();
+    expect(play.view.claimTileCode).toBe("east");
+    clock.advance(5000);
+    expect(play.view.claimTimeoutMs).toBeNull();
+    play.useDevMode(true);
+    play.applyClaimWindow({ discardSeatIndex: 1, tileCode: "south", timeoutMs: 5000 });
+    clock.advance(5000);
+    expect(play.view.claimTimeoutMs).toBe(5000);
+    play.applyTurn({ currentSeatIndex: 2, phase: RoundPhase.Discard });
+    expect(play.view.claimTileCode).toBeNull();
   });
 
   it("drops a rejected discard so the next last tile is still in the hand", () => {
@@ -163,6 +218,33 @@ describe("PlayLogic", () => {
     expect(emitted).toHaveLength(1);
   });
 
+  it("does not time this seat's discard turn when dev mode is on", () => {
+    const emitted: object[] = [];
+    const clock = manualClock();
+    const play = new PlayLogic(
+      {
+        draw() {},
+        discard(payload) {
+          emitted.push(payload);
+        },
+        claim() {},
+        passClaim() {},
+        declareWin() {},
+      },
+      clock,
+    );
+    play.useDevMode(true);
+    play.applySnapshot(inProgressSnapshot(RoundPhase.Discard, 0));
+    expect(play.view.turnRemainingMs).toBeNull();
+    clock.advance(5000);
+    expect(emitted).toEqual([]);
+    play.applyTurn({ currentSeatIndex: 1, phase: RoundPhase.Discard });
+    play.applyTurn({ currentSeatIndex: 0, phase: RoundPhase.Discard });
+    clock.advance(5000);
+    expect(emitted).toEqual([]);
+    expect(play.view.turnRemainingMs).toBeNull();
+  });
+
   it("does not auto-discard when the claim window is unlimited or it is not this seat", () => {
     const emitted: object[] = [];
     const clock = manualClock();
@@ -221,20 +303,26 @@ describe("PlayLogic", () => {
 
 function manualClock(): PlayClock & { advance(ms: number): void } {
   let now = 0;
-  let tick: (() => void) | undefined;
+  const ticks = new Set<() => void>();
   return {
     now() {
       return now;
     },
     every(_intervalMs, onTick) {
-      tick = onTick;
+      ticks.add(onTick);
       return function stop() {
-        tick = undefined;
+        ticks.delete(onTick);
       };
     },
     advance(ms) {
       now += ms;
-      tick?.();
+      const pending: (() => void)[] = [];
+      for (const tick of ticks) {
+        pending.push(tick);
+      }
+      for (const tick of pending) {
+        tick();
+      }
     },
   };
 }
