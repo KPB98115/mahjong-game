@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  DevModeLogic,
-  rememberDevMode,
-  storedDevMode,
-} from "../../logic/client/dev/devModeLogic";
+import { DevModeLogic, rememberDevMode, storedDevMode } from "../../logic/client/dev/devModeLogic";
 
 function memoryStorage(): Pick<Storage, "getItem" | "setItem"> {
   const values = new Map<string, string>();

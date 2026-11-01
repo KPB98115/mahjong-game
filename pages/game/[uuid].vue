@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { type Props } from "./[uuid].server";
-import { defineAsyncComponent, inject, onMounted, onUnmounted, reactive, ref, watchEffect } from "vue";
+import {
+  defineAsyncComponent,
+  inject,
+  onMounted,
+  onUnmounted,
+  reactive,
+  ref,
+  watchEffect,
+} from "vue";
 import { useRouter } from "@void/vue";
 import { AuthLogic } from "../../src/logic/client/auth/authLogic";
 import { useDevMode } from "../../src/logic/client/dev/useDevMode";

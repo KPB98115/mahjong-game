@@ -85,7 +85,10 @@ function claimWindowLabel(value: ClaimWindowMs | null): string {
     <p v-if="error" class="error" role="alert">{{ locale.errorLabel(error) }}</p>
     <label class="field">
       {{ locale.text(MessageKey.Ruleset) }}
-      <select :value="props.model.ruleset" @change="chooseRuleset(($event.target as HTMLSelectElement).value)">
+      <select
+        :value="props.model.ruleset"
+        @change="chooseRuleset(($event.target as HTMLSelectElement).value)"
+      >
         <option v-for="ruleset in rulesets" :key="ruleset" :value="ruleset">
           {{ locale.rulesetLabel(ruleset) }}
         </option>
