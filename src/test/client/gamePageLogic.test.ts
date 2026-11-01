@@ -14,7 +14,7 @@ import { PrevailingWind } from "../../types/server/prevailingWind";
 import { Ruleset } from "../../types/server/ruleset";
 import { createFakeFetch, failedBody, successBody } from "./fakeApi";
 import { FakeGameSocket } from "./fakeSocket";
-import { waitingSnapshot } from "./snapshotFixture";
+import { playRound, waitingSnapshot } from "./snapshotFixture";
 
 const gameId = "11111111-1111-4111-8111-111111111111";
 const otherGameId = "22222222-2222-4222-8222-222222222222";
@@ -154,13 +154,7 @@ describe("GamePageLogic", () => {
   it("adds a bot and can start the round when the fourth seat fills", async () => {
     const waiting = waitingSnapshot({ gameId });
     const started = waitingSnapshot({ gameId, status: GameStatus.InProgress });
-    started.round = {
-      phase: RoundPhase.Discard,
-      currentSeatIndex: 0,
-      resultType: null,
-      winKind: null,
-      wallRemainingCount: 80,
-    };
+    started.round = playRound({ phase: RoundPhase.Discard, currentSeatIndex: 0 });
     const fetchFn = createFakeFetch([
       ...sessionAndMe(namedProfile),
       {
@@ -193,13 +187,7 @@ describe("GamePageLogic", () => {
   it("keeps the live hand when a public state refresh arrives", () => {
     const snapshot = waitingSnapshot({ gameId, status: GameStatus.InProgress });
     snapshot.game.claimWindowMs = null;
-    snapshot.round = {
-      phase: RoundPhase.Discard,
-      currentSeatIndex: 0,
-      resultType: null,
-      winKind: null,
-      wallRemainingCount: 80,
-    };
+    snapshot.round = playRound({ phase: RoundPhase.Discard, currentSeatIndex: 0 });
     snapshot.self = {
       seatIndex: 0,
       handTiles: [
@@ -225,13 +213,7 @@ describe("GamePageLogic", () => {
     const { self: _self, ...publicState } = snapshot;
     logic.applyPublicState({
       ...publicState,
-      round: {
-        phase: RoundPhase.Claim,
-        currentSeatIndex: 0,
-        resultType: null,
-        winKind: null,
-        wallRemainingCount: 80,
-      },
+      round: playRound({ phase: RoundPhase.Claim, currentSeatIndex: 0 }),
       publicTiles: {
         discards: [{ seatIndex: 0, tileCode: "man_2", sortIndex: 0 }],
         melds: [],

@@ -184,7 +184,7 @@ Logic: rules that are about that table’s meaning. Cross-table work is owned by
 | `RoundsLogic` | Start hand (insert round, deal). Turn / `phase` (`draw` / `discard` / `claim`). Win / empty-wall results (`winKind`, `discardFromSeatIndex`). On `GamesLogic.abort` while in progress: `status = aborted`, `resultType = abort` (no scores). Orchestrates tile moves by calling the tile/meld logics. |
 | `HandsLogic` | One concealed hand per seat per round. |
 | `HandTilesLogic` | Concealed tiles: deal, draw (`isDrawn`), remove for discard/claim. |
-| `WallTilesLogic` | 144-tile wall. Next draw = `MIN(sort_index)`. 补花 / kong replacement = `MAX(sort_index)`. Empty wall. |
+| `WallTilesLogic` | 144-tile wall (`wallTileCount` in `wallTileCodes.ts`). Next draw = `MIN(sort_index)`. 补花 / kong replacement = `MAX(sort_index)`. Empty wall. |
 | `DiscardTilesLogic` | Public discards; last discard = max `sort_index` for the round. |
 | `FlowerTilesLogic` | Bonus tiles in front of a seat. 补花: move flower here, then replacement from wall tail (only if `bonusTilesEnabled`). |
 | `MeldsLogic` | Pong / kong / chow, concealed kong, `fromSeatIndex`, chow-only-from-previous. Claim resolve order **win > kong > pong > chow**. |
@@ -209,7 +209,7 @@ Play logic reads **rule columns on `game.games`**, not `if ruleset == taiwan`. C
 | Claim / pass / hu | `RoundsLogic` | `MeldsLogic`, `MeldTilesLogic`, `HandTilesLogic`, `DiscardTilesLogic`; win → scores |
 | End hand | `RoundsLogic` | `RoundScoresLogic`, `ScorePaymentsLogic`, `GamesLogic` (completed), `UserLogic` (figures) |
 | `POST .../next-wind` | `SeatsLogic` (agree) then `GamesLogic` (when all four, not north) | `SeatsLogic` (copy seats onto new game) |
-| `GET /api/games/:gameId` | `GamesLogic` (hydrate if seated) | seats, round, self hand, public tiles, scores |
+| `GET /api/games/:gameId` | `GamesLogic` (hydrate if seated) | seats, round (including wall remaining count and head/tail indexes), self hand, public tiles, scores |
 | Auth seated exception | `AuthLogic` | `SeatsRepo.findByUserId` (row I/O). Whether that keeps identity is `AuthLogic`, not the repo. |
 
 HTTP and Socket.IO call the same logic classes. Socket handlers: [`docs/socket.md`](socket.md). Socket.IO does not talk to repos directly.
@@ -242,6 +242,7 @@ HTTP route / socket handler
 - Static sets are enums in `src/types/server`; client create/join/play closed fields are whitelisted with those enums ([`docs/types.md`](types.md)).
 - Repos speak camelCase + enums; Drizzle maps to SQL snake_case.
 - One seat per user. Abort dissolves waiting or in-progress tables.
+- The public snapshot never includes wall `tileCode`s. `loadGameSnapshot` publishes `wallRemainingCount`, `wallHeadSortIndex`, and `wallTailSortIndex` from the ordered wall (`null` / `null` when empty). The deal cursor is `handTileCount * 4`. Client layout: [`docs/client.md`](client.md#live-wall).
 
 ## Open (game classes)
 

@@ -152,6 +152,8 @@ async function buildPublicState(
       resultType: round.resultType,
       winKind: round.winKind,
       wallRemainingCount: wall.length,
+      wallHeadSortIndex: wall[0]?.sortIndex ?? null,
+      wallTailSortIndex: wall[wall.length - 1]?.sortIndex ?? null,
     },
     publicTiles: {
       discards: discards.map((tile) => ({

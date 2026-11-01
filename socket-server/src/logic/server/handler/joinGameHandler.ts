@@ -49,6 +49,7 @@ export class JoinGameHandler {
     socket.data.seatIndex = seatIndex;
     this.emitter.deliver(outcome.result);
     this.rearmClaimWindow(outcome.result);
+    this.actions.kickBots(gameId);
   }
 
   private rearmClaimWindow(result: Parameters<PlayEmitter["deliver"]>[0]): void {

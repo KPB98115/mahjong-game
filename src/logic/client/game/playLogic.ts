@@ -211,6 +211,8 @@ export class PlayLogic {
         resultType: null,
         winKind: null,
         wallRemainingCount: 0,
+        wallHeadSortIndex: null,
+        wallTailSortIndex: null,
       };
       this.syncTurnClock();
       return;

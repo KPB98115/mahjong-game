@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createPlayWorld, playNow, userAt, type PlayWorld } from "@app/test/playWorld";
+import { BotDifficulty } from "@app/types/server/botDifficulty";
 import { ClaimWindowMs } from "@app/types/server/claimWindowMs";
 import { GameChannelEvent } from "@app/types/server/gameChannelEvent";
 import { SocketError } from "@app/types/server/socketError";
@@ -153,6 +154,31 @@ describe("JoinGameHandler", () => {
     await world.seat(2);
 
     expect(world.timers.active().map((timer) => timer.ms)).toEqual([ClaimWindowMs.FiveSeconds]);
+  });
+
+  it("starts the dealer bot when a human joins after the HTTP deal", async () => {
+    const world = await createSocketWorld({ players: 1, dealerSeatIndex: 1 });
+    const host = userAt(world.play, 0);
+    for (let index = 0; index < 3; index += 1) {
+      const added = await world.play.seatsLogic.addBot(
+        host,
+        world.play.gameId,
+        { difficulty: BotDifficulty.Low },
+        playNow,
+      );
+      if (!("snapshot" in added)) {
+        throw new Error(`add bot failed: ${added.error}`);
+      }
+    }
+    const socket = world.fake.connect(host);
+    await world.handlers.joinGame.handle(socket, { gameId: world.play.gameId });
+
+    await expect
+      .poll(async () => {
+        const round = await world.play.round();
+        return (await world.play.tables.discardTilesRepo.findByRoundId(round.id)).length;
+      })
+      .toBeGreaterThan(0);
   });
 });
 

@@ -15,7 +15,7 @@ import { WinKind } from "../../types/server/winKind";
 import { Ruleset } from "../../types/server/ruleset";
 import { createFakeFetch, failedBody, successBody } from "./fakeApi";
 import { FakeGameSocket } from "./fakeSocket";
-import { waitingSnapshot } from "./snapshotFixture";
+import { playRound, waitingSnapshot } from "./snapshotFixture";
 
 const gameId = "11111111-1111-4111-8111-111111111111";
 const nextGameId = "33333333-3333-4333-8333-333333333333";
@@ -36,13 +36,15 @@ const namedProfile: ProfileResponse = {
 
 function completedSnapshot() {
   const snapshot = waitingSnapshot({ gameId, status: GameStatus.Completed });
-  snapshot.round = {
+  snapshot.round = playRound({
     phase: RoundPhase.Discard,
     currentSeatIndex: 0,
     resultType: RoundResultType.Win,
     winKind: WinKind.SelfDraw,
     wallRemainingCount: 10,
-  };
+    wallHeadSortIndex: 70,
+    wallTailSortIndex: 79,
+  });
   snapshot.scores.roundScores = [
     {
       seatIndex: 0,

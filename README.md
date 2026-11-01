@@ -101,6 +101,8 @@ The playable UI is a landscape PWA (Void pages + Vue). Traditional Chinese (`zh-
 
 On a human discard turn the banner counts down that table's `claimWindowMs` (5 or 10 seconds). At zero the client discards the last tile in the hand. An unlimited window (`null`) shows no countdown and does not auto-discard. Bots are not on this timer; `BotDriver` plays their turns. The server still validates every discard.
 
+The play table draws the remaining wall as face-down stacks around the compass. The snapshot publishes only `wallHeadSortIndex` and `wallTailSortIndex` (and `wallRemainingCount` for the compass). Tile codes in the wall stay on the server. Hong Kong opens 52 slots (`13 × 4`); Taiwan opens 64 (`16 × 4`). A normal draw empties the head; a flower or kong replacement empties the tail. Details: [`docs/client.md`](docs/client.md#live-wall).
+
 ---
 
 ### Progress
@@ -117,9 +119,10 @@ On a human discard turn the banner counts down that table's `claimWindowMs` (5 o
 | Redis: claim window answers, write-through round and hand cache, game channel (`gameAborted`, `gameChanged`, `nextWind`) | Done |
 | Socket.IO handlers: ticket auth, join, draw, discard, claim, pass, declare win, presence, claim timer, fan-out | Done |
 | Vue game client: landscape PWA, zh-TW / en-US, waiting room, play, round result, discard countdown | Done |
+| Live wall: face-down stacks from `wallHeadSortIndex` / `wallTailSortIndex`, no tile codes | Done |
 | Bot players: Low / Medium / Smart difficulty, `POST /api/games/:gameId/bot`, `BotDriver` socket wiring, in-process integration test | Done |
 
-Design notes live in `docs/` (`game.md`, `database.md`, `socket.md`, `types.md`, `bot.md`). Bot API and heuristics: [`docs/bot.md`](docs/bot.md).
+Design notes live in `docs/` (`game.md`, `database.md`, `socket.md`, `types.md`, `bot.md`, `client.md`). Bot API and heuristics: [`docs/bot.md`](docs/bot.md). Live wall: [`docs/client.md`](docs/client.md#live-wall).
 
 ---
 

@@ -535,6 +535,8 @@ describe("POST /api/games/join and GET /api/games/:gameId", () => {
       phase: RoundPhase.Discard,
       currentSeatIndex: 1,
       wallRemainingCount: 91,
+      wallHeadSortIndex: 53,
+      wallTailSortIndex: 143,
       resultType: null,
       winKind: null,
     });
@@ -556,6 +558,8 @@ describe("POST /api/games/join and GET /api/games/:gameId", () => {
       expect.objectContaining({ tileCode: "bam_5", isDrawn: true }),
     ]);
     expect(dealerView.round?.wallRemainingCount).toBe(91);
+    expect(dealerView.round?.wallHeadSortIndex).toBe(53);
+    expect(dealerView.round?.wallTailSortIndex).toBe(143);
     expect(countTileCodes(dealerView)).toBe(14);
     expect(standardWallTileCodes()).toHaveLength(144);
     const hostView = successData(
@@ -593,6 +597,8 @@ describe("POST /api/games/join and GET /api/games/:gameId", () => {
       expect.objectContaining({ tileCode: "man_9" }),
     ]);
     expect(dealerView.round?.wallRemainingCount).toBe(90);
+    expect(dealerView.round?.wallHeadSortIndex).toBe(53);
+    expect(dealerView.round?.wallTailSortIndex).toBe(142);
     expect(countTileCodes(dealerView)).toBe(15);
 
     const manual = createWorld();
@@ -606,7 +612,12 @@ describe("POST /api/games/join and GET /api/games/:gameId", () => {
       await call(manual.app, "GET", `/api/games/${seated.gameId}`, seated.dealer.cookie),
     );
     expect(view.game.handTileCount).toBe(16);
-    expect(view.round).toMatchObject({ phase: RoundPhase.Draw, wallRemainingCount: 80 });
+    expect(view.round).toMatchObject({
+      phase: RoundPhase.Draw,
+      wallRemainingCount: 80,
+      wallHeadSortIndex: 64,
+      wallTailSortIndex: 143,
+    });
     expect(view.self?.handTiles).toHaveLength(16);
     expect(view.self?.handTiles.some((tile) => tile.isDrawn)).toBe(false);
   });
