@@ -194,8 +194,8 @@ export class GamePageLogic {
     this.play.discardTile(this.uuid, tileId);
   }
 
-  claim(kind: Parameters<PlayLogic["claim"]>[1]): void {
-    this.play.claim(this.uuid, kind);
+  claim(kind: Parameters<PlayLogic["claim"]>[1], tileIds?: string[]): void {
+    this.play.claim(this.uuid, kind, tileIds);
   }
 
   passClaim(): void {

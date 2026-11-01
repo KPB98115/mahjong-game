@@ -18,26 +18,17 @@ const coverSrc = tileCoverSrc();
 
 <style scoped>
 .wall {
-  display: grid;
-  grid-auto-flow: column;
-  grid-template-rows: repeat(2, minmax(0, 1fr));
-  grid-auto-columns: clamp(1.05rem, 3.6cqh, 1.45rem);
-  gap: 0.25cqh;
-  height: clamp(2.5rem, 9cqh, 3.4rem);
+  display: flex;
+  gap: 1px;
   margin: 0;
-  padding: 0.35cqh;
-  overflow-x: auto;
-  overflow-y: hidden;
+  padding: 0;
   list-style: none;
-  background: rgb(8 48 30 / 0.45);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
 }
 
 .cover {
   display: block;
-  width: 100%;
-  height: 100%;
+  width: var(--tile-w, 1.35rem);
+  height: var(--tile-h, 1.8rem);
   object-fit: contain;
 }
 </style>

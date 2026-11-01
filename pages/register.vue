@@ -3,7 +3,6 @@ import { type Props } from "./register.server";
 import { defineAsyncComponent, onMounted, reactive, ref } from "vue";
 import { useRouter } from "@void/vue";
 import { AuthLogic } from "../src/logic/client/auth/authLogic";
-import { DevModeLogic, rememberDevMode, storedDevMode } from "../src/logic/client/dev/devModeLogic";
 import { GamesLogic } from "../src/logic/client/game/gamesLogic";
 import { ApiClient } from "../src/logic/client/http/apiClient";
 import { useLocale } from "../src/logic/client/locale/useLocale";
@@ -36,7 +35,6 @@ const logic = reactive(
     props.defaults,
   ),
 );
-const devMode = reactive(new DevModeLogic());
 const homeKey = "home";
 const endKey = "end";
 const arrowLeftKey = "arrowleft";
@@ -47,7 +45,6 @@ const createTabButton = ref<HTMLButtonElement | null>(null);
 const joinTabButton = ref<HTMLButtonElement | null>(null);
 
 onMounted(async () => {
-  devMode.load(storedDevMode(localStorage));
   await logic.bootstrap();
   hydrated.value = true;
 });
@@ -62,10 +59,6 @@ function createGame() {
 
 function joinGame() {
   return logic.join();
-}
-
-function toggleDevMode() {
-  rememberDevMode(localStorage, devMode.toggle());
 }
 
 function showTableTab(tab: RegisterTab) {
@@ -104,15 +97,6 @@ function tableTabAfterKey(current: RegisterTab, key: string): RegisterTab | unde
       <p class="kicker">{{ locale.text(MessageKey.HongKongAndTaiwan) }}</p>
       <h1>{{ locale.text(MessageKey.AppTitle) }}</h1>
       <p class="lead">{{ locale.text(MessageKey.ChooseNameLead) }}</p>
-      <button
-        type="button"
-        class="dev-mode-toggle"
-        :aria-pressed="devMode.enabled"
-        :aria-label="locale.text(MessageKey.DevMode)"
-        @click="toggleDevMode"
-      >
-        <span v-if="devMode.enabled">{{ locale.text(MessageKey.DevMode) }}</span>
-      </button>
     </header>
     <p v-if="!hydrated" class="status" aria-live="polite">
       {{ locale.text(MessageKey.OpeningLobby) }}
@@ -193,7 +177,7 @@ function tableTabAfterKey(current: RegisterTab, key: string): RegisterTab | unde
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   gap: 1.2cqh;
-  padding: 0 2cqw 1.5cqh;
+  padding: 0.4cqh 3.8rem 1.5cqh 2cqw;
 }
 
 .hero {
@@ -228,33 +212,6 @@ function tableTabAfterKey(current: RegisterTab, key: string): RegisterTab | unde
   flex: 1 1 12rem;
   color: var(--color-muted-foreground);
   font-size: clamp(0.85rem, 2.8cqh, 1rem);
-}
-
-.dev-mode-toggle {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 3rem;
-  height: 3rem;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: transparent;
-  text-align: start;
-  cursor: pointer;
-}
-
-.dev-mode-toggle[aria-pressed="true"] {
-  position: static;
-  justify-self: start;
-  width: fit-content;
-  height: auto;
-  color: var(--color-accent);
-  font-size: 1.6cqh;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
 }
 
 .stage,

@@ -77,6 +77,8 @@ describe("PlayLogic", () => {
     play.selectedTileIds = [tileA, tileB];
     play.claim(gameId, MeldType.Chow);
     expect(emitted[1]).toEqual({ gameId, kind: MeldType.Chow, tileIds: [tileA, tileB] });
+    play.claim(gameId, MeldType.Pong, [tileA]);
+    expect(emitted[2]).toEqual({ gameId, kind: MeldType.Pong, tileIds: [tileA] });
   });
 
   it("discards a double-clicked tile and refuses discard while several tiles are selected", () => {
@@ -111,13 +113,40 @@ describe("PlayLogic", () => {
     expect(play.view.error).toBe(SocketError.NotYourTurn);
   });
 
-  it("records a claim window timeout for display only", () => {
-    const play = new PlayLogic();
+  it("counts down a claim window without discarding", () => {
+    const emitted: object[] = [];
+    const clock = manualClock();
+    const play = new PlayLogic(
+      {
+        draw() {},
+        discard(payload) {
+          emitted.push(payload);
+        },
+        claim() {},
+        passClaim() {},
+        declareWin() {},
+      },
+      clock,
+    );
     play.applySnapshot(inProgressSnapshot(RoundPhase.Claim, 1));
     play.applyClaimWindow({ discardSeatIndex: 1, tileCode: "east", timeoutMs: 5000 });
     expect(play.view.claimTimeoutMs).toBe(5000);
+    expect(play.view.claimTileCode).toBe("east");
+    expect(play.view.claimDiscardSeatIndex).toBe(1);
+    clock.advance(2000);
+    expect(play.view.claimTimeoutMs).toBe(3000);
+    expect(emitted).toEqual([]);
     play.applyClaimWindow({ discardSeatIndex: 1, tileCode: "east", timeoutMs: null });
     expect(play.view.claimTimeoutMs).toBeNull();
+    expect(play.view.claimTileCode).toBe("east");
+    clock.advance(5000);
+    expect(play.view.claimTimeoutMs).toBeNull();
+    play.useDevMode(true);
+    play.applyClaimWindow({ discardSeatIndex: 1, tileCode: "south", timeoutMs: 5000 });
+    clock.advance(5000);
+    expect(play.view.claimTimeoutMs).toBe(5000);
+    play.applyTurn({ currentSeatIndex: 2, phase: RoundPhase.Discard });
+    expect(play.view.claimTileCode).toBeNull();
   });
 
   it("drops a rejected discard so the next last tile is still in the hand", () => {
@@ -274,20 +303,26 @@ describe("PlayLogic", () => {
 
 function manualClock(): PlayClock & { advance(ms: number): void } {
   let now = 0;
-  let tick: (() => void) | undefined;
+  const ticks = new Set<() => void>();
   return {
     now() {
       return now;
     },
     every(_intervalMs, onTick) {
-      tick = onTick;
+      ticks.add(onTick);
       return function stop() {
-        tick = undefined;
+        ticks.delete(onTick);
       };
     },
     advance(ms) {
       now += ms;
-      tick?.();
+      const pending: (() => void)[] = [];
+      for (const tick of ticks) {
+        pending.push(tick);
+      }
+      for (const tick of pending) {
+        tick();
+      }
     },
   };
 }

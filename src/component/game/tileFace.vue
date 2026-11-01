@@ -29,15 +29,14 @@ const src = computed(() => tileFaceSrc(props.tileCode));
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: clamp(2.15rem, 7.5cqh, 2.75rem);
-  height: clamp(2.9rem, 10cqh, 3.6rem);
+  width: var(--tile-w, clamp(1.5rem, 7cqh, 2.35rem));
+  height: var(--tile-h, clamp(2.05rem, 9.2cqh, 3.1rem));
   object-fit: contain;
   padding: 0.15rem;
-  border: 1px solid #e7a0b4;
+  border: 1px solid #e4dfd4;
   border-radius: var(--radius-sm);
-  background: transparent;
+  background: #ffffff;
   color: var(--color-tile-ink);
-  mix-blend-mode: multiply;
   font-size: 0.7rem;
 }
 </style>

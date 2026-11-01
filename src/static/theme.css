@@ -17,7 +17,7 @@
   --color-destructive: #dc2626;
   --color-on-destructive: #ffffff;
   --color-ring: #f6c28b;
-  --color-tile: #f4b4c6;
+  --color-tile: #ffffff;
   --color-tile-ink: #4a2430;
   --font-heading: "Noto Serif TC", "Noto Serif", "Songti TC", serif;
   --font-body: "Noto Sans TC", "Noto Sans", system-ui, sans-serif;
@@ -260,10 +260,11 @@ button:disabled {
 }
 
 .app-frame {
+  position: relative;
   width: 100%;
   height: 100%;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   container-type: size;
   overflow: hidden;
   color: var(--color-foreground);
@@ -279,38 +280,6 @@ button:disabled {
 
 .app-frame h2 {
   font-size: clamp(0.95rem, 3.4cqh, 1.25rem);
-}
-
-.app-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 2cqw;
-  min-height: var(--target-min);
-  padding: 0.6cqh 2cqw 0;
-}
-
-.app-mark {
-  font-family: var(--font-heading);
-  font-size: clamp(1rem, 3.4cqh, 1.35rem);
-  letter-spacing: 0.08em;
-}
-
-.locale-switch {
-  display: flex;
-  gap: var(--space-md);
-}
-
-.locale-option {
-  min-width: 0;
-  padding-inline: 0.7rem;
-  font-size: clamp(0.8rem, 2.6cqh, 0.95rem);
-}
-
-.locale-option[aria-pressed="true"] {
-  background: var(--color-accent);
-  color: var(--color-on-accent);
-  border-color: transparent;
 }
 
 .app-stage {

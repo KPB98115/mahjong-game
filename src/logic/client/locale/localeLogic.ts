@@ -9,6 +9,7 @@ import { MeldType } from "../../../types/server/meldType";
 import { RoundPhase } from "../../../types/server/roundPhase";
 import { RoundResultType } from "../../../types/server/roundResultType";
 import { Ruleset } from "../../../types/server/ruleset";
+import { PrevailingWind } from "../../../types/server/prevailingWind";
 import { ScoreUnit } from "../../../types/server/scoreUnit";
 import { SocketError } from "../../../types/server/socketError";
 
@@ -203,7 +204,48 @@ export class LocaleLogic {
   boolLabel(value: boolean): string {
     return this.text(value ? MessageKey.On : MessageKey.Off);
   }
+
+  windName(wind: PrevailingWind): string {
+    return this.text(windKeys[wind]);
+  }
+
+  windGlyph(wind: PrevailingWind): string {
+    return windGlyphs[this.locale][wind];
+  }
+
+  windMark(wind: PrevailingWind): string {
+    return windMarks[wind];
+  }
 }
+
+const windKeys: Record<PrevailingWind, MessageKey> = {
+  [PrevailingWind.East]: MessageKey.WindEast,
+  [PrevailingWind.South]: MessageKey.WindSouth,
+  [PrevailingWind.West]: MessageKey.WindWest,
+  [PrevailingWind.North]: MessageKey.WindNorth,
+};
+
+const windMarks: Record<PrevailingWind, string> = {
+  [PrevailingWind.East]: "E",
+  [PrevailingWind.South]: "S",
+  [PrevailingWind.West]: "W",
+  [PrevailingWind.North]: "N",
+};
+
+const windGlyphs: Record<Locale, Record<PrevailingWind, string>> = {
+  [Locale.ZhTw]: {
+    [PrevailingWind.East]: "東",
+    [PrevailingWind.South]: "南",
+    [PrevailingWind.West]: "西",
+    [PrevailingWind.North]: "北",
+  },
+  [Locale.EnUs]: {
+    [PrevailingWind.East]: "E",
+    [PrevailingWind.South]: "S",
+    [PrevailingWind.West]: "W",
+    [PrevailingWind.North]: "N",
+  },
+};
 
 function matchLocale(value: string): Locale | undefined {
   const normalized = value.trim().toLowerCase();

@@ -96,6 +96,13 @@ const zhTw: MessageCatalog = {
   [Key.ResultComplete]: "結束",
   [Key.ClaimWindowOpen]: "吃碰時間 {ms} 毫秒",
   [Key.TurnSeconds]: "剩餘 {seconds} 秒",
+  [Key.WindEast]: "東",
+  [Key.WindSouth]: "南",
+  [Key.WindWest]: "西",
+  [Key.WindNorth]: "北",
+  [Key.CompassStatus]: "圈風{wind}，牌牆剩 {count} 張",
+  [Key.CompassTimed]: "圈風{wind}，牌牆剩 {count} 張，剩餘 {seconds} 秒",
+  [Key.SuggestedAction]: "建議{action}",
   [Key.ErrorUnauthorized]: "尚未登入",
   [Key.ErrorGameNotFound]: "找不到這桌",
   [Key.ErrorAlreadySeated]: "你已經在牌桌裡",
@@ -117,6 +124,7 @@ const zhTw: MessageCatalog = {
   [Key.ErrorNoClaimWindow]: "現在不能吃碰",
   [Key.ErrorStaleGame]: "這局已經更新",
   [Key.DevMode]: "開發模式",
+  [Key.Settings]: "設定",
 };
 
 const enUs: MessageCatalog = {
@@ -213,6 +221,13 @@ const enUs: MessageCatalog = {
   [Key.ResultComplete]: "complete",
   [Key.ClaimWindowOpen]: "Claim window {ms} ms",
   [Key.TurnSeconds]: "{seconds}s left",
+  [Key.WindEast]: "East",
+  [Key.WindSouth]: "South",
+  [Key.WindWest]: "West",
+  [Key.WindNorth]: "North",
+  [Key.CompassStatus]: "Round wind {wind}, {count} tiles left",
+  [Key.CompassTimed]: "Round wind {wind}, {count} tiles left, {seconds} seconds left",
+  [Key.SuggestedAction]: "Suggested: {action}",
   [Key.ErrorUnauthorized]: "You are not signed in",
   [Key.ErrorGameNotFound]: "No table with that code",
   [Key.ErrorAlreadySeated]: "You are already seated",
@@ -234,6 +249,7 @@ const enUs: MessageCatalog = {
   [Key.ErrorNoClaimWindow]: "There is no claim window",
   [Key.ErrorStaleGame]: "This table has moved on",
   [Key.DevMode]: "Dev mode",
+  [Key.Settings]: "Settings",
 };
 
 export const messageCatalogs: Record<Locale, MessageCatalog> = {

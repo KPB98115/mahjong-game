@@ -13,7 +13,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   copied: [];
   addBot: [];
-  abort: [];
 }>();
 
 const locale = useLocale();
@@ -26,10 +25,6 @@ async function copyCode() {
 
 function addBot() {
   emit("addBot");
-}
-
-function abort() {
-  emit("abort");
 }
 </script>
 
@@ -98,9 +93,6 @@ function abort() {
       </label>
       <button class="btn" type="submit" :disabled="model.pending || snapshot.seats.length >= 4">
         {{ locale.text(model.pending ? MessageKey.Adding : MessageKey.AddBot) }}
-      </button>
-      <button class="btn btn-danger" type="button" :disabled="model.pending" @click="abort">
-        {{ locale.text(MessageKey.AbortTable) }}
       </button>
     </form>
     <p v-if="model.error" class="error" role="alert">{{ locale.errorLabel(model.error) }}</p>

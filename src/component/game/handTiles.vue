@@ -17,7 +17,8 @@ const emit = defineEmits<{
 }>();
 
 const locale = useLocale();
-const orderedTiles = computed(() => sortedHandTiles(props.tiles));
+const concealedTiles = computed(() => sortedHandTiles(props.tiles.filter((tile) => !tile.isDrawn)));
+const drawnTiles = computed(() => props.tiles.filter((tile) => tile.isDrawn));
 
 function toggle(tileId: string) {
   emit("toggle", tileId);
@@ -32,11 +33,23 @@ function discardTile(tileId: string) {
   <section class="hand">
     <h2 class="section-title">{{ locale.text(MessageKey.YourHand) }}</h2>
     <ul class="hand-tiles">
-      <li v-for="tile in orderedTiles" :key="tile.id">
+      <li v-for="tile in concealedTiles" :key="tile.id">
         <button
           type="button"
           class="tile-button"
-          :class="{ selected: selectedTileIds.includes(tile.id), drawn: tile.isDrawn }"
+          :class="{ selected: selectedTileIds.includes(tile.id) }"
+          :aria-pressed="selectedTileIds.includes(tile.id)"
+          @click="toggle(tile.id)"
+          @dblclick="discardTile(tile.id)"
+        >
+          <TileFace :tile-code="tile.tileCode" />
+        </button>
+      </li>
+      <li v-for="(tile, index) in drawnTiles" :key="tile.id" :class="{ drawn: index === 0 }">
+        <button
+          type="button"
+          class="tile-button"
+          :class="{ selected: selectedTileIds.includes(tile.id) }"
           :aria-pressed="selectedTileIds.includes(tile.id)"
           @click="toggle(tile.id)"
           @dblclick="discardTile(tile.id)"
@@ -52,6 +65,8 @@ function discardTile(tileId: string) {
 .hand {
   position: relative;
   display: grid;
+  width: 100%;
+  min-width: 0;
 }
 
 .hand .section-title {
@@ -69,35 +84,44 @@ function discardTile(tileId: string) {
 .hand-tiles {
   display: flex;
   flex-wrap: nowrap;
+  align-items: flex-end;
+  width: max-content;
+  max-width: 100%;
+  min-width: 0;
   overflow-x: auto;
   overscroll-behavior: contain;
   touch-action: pan-x;
-  gap: 0.5cqw;
+  gap: 1px;
   margin: 0;
-  padding: 0.5cqh 0.8cqw;
+  padding: 1rem 0.55rem 0;
   list-style: none;
-  background: rgb(8 64 38 / 0.55);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  --tile-w: var(--hand-tile-w, 2.15rem);
+  --tile-h: var(--hand-tile-h, 2.9rem);
 }
 
 .tile-button {
   border: none;
   background: none;
   padding: 0;
-  min-width: 2.75rem;
-  min-height: 3.5rem;
+  min-width: var(--tile-w);
+  min-height: var(--tile-h);
   border-radius: var(--radius-sm);
-  transition: box-shadow var(--duration) ease;
+  transition: transform var(--duration) ease;
 }
 
-.tile-button:active :deep(.tile-plate) {
-  transform: translateY(-0.15rem);
+.tile-button.selected {
+  position: relative;
+  z-index: 1;
+  transform: translateY(-0.45rem);
 }
 
 .selected :deep(.tile-plate) {
   outline: 3px solid var(--color-accent);
   outline-offset: 2px;
+}
+
+.drawn {
+  margin-left: 0.4rem;
 }
 
 .drawn :deep(.tile-plate) {

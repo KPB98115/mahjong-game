@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import { type Props } from "./[uuid].server";
-import { defineAsyncComponent, onMounted, onUnmounted, reactive, ref } from "vue";
+import { defineAsyncComponent, inject, onMounted, onUnmounted, reactive, ref, watchEffect } from "vue";
 import { useRouter } from "@void/vue";
 import { AuthLogic } from "../../src/logic/client/auth/authLogic";
-import { storedDevMode } from "../../src/logic/client/dev/devModeLogic";
+import { useDevMode } from "../../src/logic/client/dev/useDevMode";
 import { GamePageLogic } from "../../src/logic/client/game/gamePageLogic";
+import { tableActionsKey } from "../../src/logic/client/game/tableActions";
 import { GamesLogic } from "../../src/logic/client/game/gamesLogic";
 import { ioSocketFactory } from "../../src/logic/client/game/ioSocketFactory";
 import { SocketLogic } from "../../src/logic/client/game/socketLogic";
 import { ApiClient } from "../../src/logic/client/http/apiClient";
 import { useLocale } from "../../src/logic/client/locale/useLocale";
 import { GamePanel } from "../../src/types/client/gamePanel";
+import { GameStatus } from "../../src/types/server/gameStatus";
 import { MessageKey } from "../../src/types/client/messageKey";
 import { type MeldType } from "../../src/types/server/meldType";
 
@@ -82,14 +84,33 @@ pageLogic = reactive(
   ),
 );
 const hydrated = ref(false);
+const devMode = useDevMode();
+const tableActions = inject(tableActionsKey);
+
+watchEffect(() => {
+  pageLogic.play.useDevMode(devMode.enabled);
+});
+
+watchEffect(() => {
+  if (tableActions == null) {
+    return;
+  }
+  const status = pageLogic.snapshot?.game.status;
+  const allowed = status === GameStatus.Waiting || status === GameStatus.InProgress;
+  tableActions.abort = allowed ? abortGame : null;
+  tableActions.pending = pageLogic.waiting.pending;
+});
 
 onMounted(async () => {
-  pageLogic.play.useDevMode(storedDevMode(localStorage));
   await pageLogic.bootstrap();
   hydrated.value = true;
 });
 
 onUnmounted(() => {
+  if (tableActions != null) {
+    tableActions.abort = null;
+    tableActions.pending = false;
+  }
   pageLogic.play.release();
 });
 
@@ -121,8 +142,8 @@ function discardHandTile(tileId: string) {
   pageLogic.discardTile(tileId);
 }
 
-function claimMeld(kind: MeldType) {
-  pageLogic.claim(kind);
+function claimMeld(kind: MeldType, tileIds: string[]) {
+  pageLogic.claim(kind, tileIds);
 }
 
 function passClaim() {
@@ -139,8 +160,8 @@ function agreeNextWind() {
 </script>
 
 <template>
-  <main class="game-page">
-    <header class="hero">
+  <main class="game-page" :class="{ playing: pageLogic.panel === GamePanel.Play }">
+    <header v-if="pageLogic.panel !== GamePanel.Play" class="hero">
       <p class="kicker">{{ locale.text(MessageKey.LiveTable) }}</p>
       <h1>{{ locale.text(MessageKey.AppTitle) }}</h1>
     </header>
@@ -154,7 +175,6 @@ function agreeNextWind() {
         :model="pageLogic.waiting"
         @copied="markCopied"
         @add-bot="addBot"
-        @abort="abortGame"
       />
       <PlayTable
         v-else-if="pageLogic.panel === GamePanel.Play"
@@ -167,7 +187,6 @@ function agreeNextWind() {
         @claim="claimMeld"
         @pass="passClaim"
         @win="declareWin"
-        @abort="abortGame"
       />
       <RoundResult
         v-else-if="pageLogic.panel === GamePanel.Result && pageLogic.scoreboard"
@@ -186,6 +205,11 @@ function agreeNextWind() {
   grid-template-rows: auto minmax(0, 1fr);
   gap: 0.4cqh;
   padding: 0 1.2cqw 0.6cqh;
+}
+
+.game-page.playing {
+  grid-template-rows: minmax(0, 1fr);
+  padding: 0;
 }
 
 .game-page > section {
